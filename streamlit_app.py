@@ -49,7 +49,8 @@ st.markdown("""
     .important-text {
         color: #003366;
         font-weight: 800;
-        font-size: 1.05em;
+        font-size: 1.1em;
+        text-decoration: underline;
     }
     
     /* Ukrycie menu */
@@ -75,13 +76,30 @@ DATA_B = [
     17299.29, 17446.34, 19113.77, 20369.73, 21122.45, 21455.55, 22660.01, 23724.96, 23365.69, 23307.62  # 31-40
 ]
 
-# Etykiety dat (Rundy 1-40)
-LABELS = [
+# Etykiety tekstowe (dla wyświetlania w nagłówku)
+LABELS_TEXT = [
     "wrz 22", "paź 22", "lis 22", "gru 22", "sty 23", "lut 23", "mar 23", "kwi 23", "maj 23", "cze 23",
     "lip 23", "sie 23", "wrz 23", "paź 23", "lis 23", "gru 23", "sty 24", "lut 24", "mar 24", "kwi 24",
     "maj 24", "cze 24", "lip 24", "sie 24", "wrz 24", "paź 24", "lis 24", "gru 24", "sty 25", "lut 25",
     "mar 25", "kwi 25", "maj 25", "cze 25", "lip 25", "sie 25", "wrz 25", "paź 25", "lis 25", "gru 25"
 ]
+
+# --- NOWOŚĆ: KONWERSJA NA PRAWDZIWE DATY (FIX WYKRESU) ---
+def get_real_dates():
+    # Generujemy listę prawdziwych obiektów datetime, żeby wykres był chronologiczny
+    # Start: wrzesień (9) 2022
+    dates = []
+    y = 2022
+    m = 9
+    for _ in range(40):
+        dates.append(datetime(y, m, 1))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return dates
+
+REAL_DATES = get_real_dates()
 
 # --- INICJALIZACJA STANU ---
 if 'user_id' not in st.session_state:
@@ -160,9 +178,7 @@ def save_to_google_sheets(data_dict):
 
 def pad_history(history_list, total_length):
     """Pomocnicza funkcja do wykresu: uzupełnia listę wartościami None do pełnej długości"""
-    # Upewniamy się, że nie przekraczamy długości (na wypadek błędów)
     base = history_list[:total_length]
-    # Dopełniamy None
     padding = [None] * (total_length - len(base))
     return base + padding
 
@@ -204,15 +220,15 @@ def show_game1_intro():
         <h3>Instrukcja:</h3>
         Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
         <ul>
-            [cite_start]<li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału[cite: 3].</li>
+            <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
             <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
             <ul>
-                [cite_start]<li><b>Indeks A:</b> Rynek akcji (S&P 500)[cite: 5].</li>
-                [cite_start]<li><b>Indeks B:</b> Rynek technologiczny (Nasdaq)[cite: 6].</li>
-                [cite_start]<li><b>Gotówka:</b> Bezpieczna przystań (0% zysku)[cite: 7].</li>
+                <li><b>Indeks A:</b> Rynek akcji (S&P 500).</li>
+                <li><b>Indeks B:</b> Rynek technologiczny (Nasdaq).</li>
+                <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
             </ul>
             <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
-            [cite_start]<li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>[cite: 11].</li>
+            <li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -221,9 +237,7 @@ def show_game1_intro():
     if 'g1_round' not in st.session_state:
         st.session_state.g1_round = 0 
         st.session_state.g1_capital = 10000.0
-        # Historia do wykresu
         st.session_state.g1_history_user = [10000.0]
-        # Normalizacja indeksów
         st.session_state.start_A = DATA_A[0]
         st.session_state.start_B = DATA_B[0]
         st.session_state.g1_history_A = [10000.0]
@@ -234,9 +248,8 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    total_len = len(LABELS) # 40
+    total_len = 40 # Stała długość gry
     
-    # Jeśli koniec danych
     if current_idx >= 39: 
         next_page('game2_intro')
         return
@@ -246,22 +259,24 @@ def show_game1():
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
     
-    st.subheader(f"Runda {current_idx + 1} / 40 ({LABELS[current_idx]})")
+    st.subheader(f"Runda {current_idx + 1} / 40 ({LABELS_TEXT[current_idx]})")
     
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
     
-    # --- FIX WYKRESU: PEŁNA OŚ ---
-    # Tworzymy DataFrame o stałej długości (40), uzupełniając brakujące dane None
+    # --- FIX WYKRESU: UŻYCIE REALNYCH DAT JAKO INDEKSU ---
+    # To zapewnia chronologię i profesjonalny format osi X
     
     chart_data = pd.DataFrame({
-        "Data": LABELS,
         "S&P 500": pad_history(st.session_state.g1_history_A, total_len),
         "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
-    }).set_index("Data")
+    })
     
-    # Rysowanie - Streamlit automatycznie pokaże całą oś X z LABELS
+    # Przypisanie prawdziwych dat jako indeksu
+    chart_data.index = REAL_DATES
+    
+    # Rysowanie - Streamlit automatycznie sformatuje oś X jako daty
     st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"]) 
     
     # Logika Lewaru
@@ -324,12 +339,12 @@ def show_game2_intro():
     st.markdown("""
     <div class="instruction-card">
         <h3>Zasady:</h3>
-        1. [cite_start]Masz <b>100 PLN</b>[cite: 40].
-        2. [cite_start]Rzucasz wirtualną monetą (ok. 20 razy)[cite: 42].
+        1. Masz <b>100 PLN</b>.
+        2. Rzucasz wirtualną monetą (ok. 20 razy).
         3. Prawdopodobieństwa:
            <ul>
-               [cite_start]<li>🦅 <b>ORZEŁ (60% szans):</b> Wygrywasz tyle, ile postawiłeś[cite: 44].</li>
-               [cite_start]<li>📉 <b>RESZKA (40% szans):</b> Tracisz stawkę[cite: 45].</li>
+               <li>🦅 <b>ORZEŁ (60% szans):</b> Wygrywasz tyle, ile postawiłeś.</li>
+               <li>📉 <b>RESZKA (40% szans):</b> Tracisz stawkę.</li>
            </ul>
         4. Decydujesz, jaki % kapitału stawiasz w każdym rzucie.
     </div>
