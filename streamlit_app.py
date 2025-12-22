@@ -108,29 +108,125 @@ if 'results' not in st.session_state:
         'game2_history': [],
         'survey_answers': {}
     }
+if 'survey_page_num' not in st.session_state:
+    st.session_state.survey_page_num = 1
 
-# Pytania ankietowe
-ALL_QUESTIONS = [
-    {"id": "LA_1", "type": "Loss Aversion", "q": "Kupiłeś akcje 'NanoTech' po 50 PLN. Obecnie kosztują 80 PLN (+60%). Analitycy celują w 100 PLN, ale czujesz niepokój.", "opts": ["A: Sprzedajesz teraz, żeby 'zaksięgować zysk'.", "B: Trzymasz pozycję, pozwalając zyskom rosnąć."]},
-    {"id": "LA_2", "type": "Loss Aversion", "q": "Masz akcje spółki węglowej kupione po 100 PLN. Obecnie kosztują 70 PLN (-30%). Fundamenty się pogarszają.", "opts": ["A: Sprzedajesz, akceptując stratę, by ochronić kapitał.", "B: Trzymasz, czekając aż wrócą do 90-100 PLN, żeby wyjść na zero."]},
-    {"id": "LA_3", "type": "Loss Aversion", "q": "Inwestycja spadła z 200 PLN do 150 PLN, ale nagle odbiła do 198 PLN (prawie cena zakupu).", "opts": ["A: Sprzedajesz natychmiast, czując ulgę, że 'prawie nic nie straciłeś'.", "B: Trzymasz dalej dla zysku, analizując powód wzrostu."]},
-    {"id": "FB_1", "type": "Framing", "q": "ZYSK: Otrzymałeś 100 000 PLN. Wybierz:", "opts": ["A: Pewny zysk 30 000 PLN.", "B: 30% szans na zysk 100 000 PLN i 70% szans na brak zysku."]},
-    {"id": "FB_2", "type": "Framing", "q": "STRATA: Otrzymałeś wezwanie do zapłaty 100 000 PLN podatku. Wybierz:", "opts": ["A: Pewna strata (zapłata) 70 000 PLN.", "B: 30% szans, że nie zapłacisz nic, 70% szans, że zapłacisz 100 000 PLN."]},
-    {"id": "AB_1", "type": "Availability", "q": "Wybierasz fundusz akcji polskich. Który wolisz?", "opts": ["A: 'Lider Wzrostu' – nagroda 'Fundusz Roku', ostatni kwartał +15%, głośno w mediach.", "B: 'Systematyczny' – brak nagród, stabilne 7-8% rocznie od 10 lat, cichy."]},
-    {"id": "AB_2", "type": "Availability", "q": "Wiadomości donoszą o katastrofie budowlanej w Azji. Masz akcje europejskiej budowlanki.", "opts": ["A: Rozważasz sprzedaż, bo masz obraz katastrofy przed oczami.", "B: Ignorujesz newsa z Azji jako nieistotny dla rynku europejskiego."]},
-    {"id": "AB_3", "type": "Availability", "q": "Pracujesz w IT. Budujesz portfel emerytalny.", "opts": ["A: Inwestujesz 80% w spółki technologiczne, bo się na tym znasz.", "B: Dywersyfikujesz o surowce i banki, mimo że nie znasz tych branż."]},
-    {"id": "CB_1", "type": "Confirmation", "q": "Chcesz kupić Bitcoina. Co wpisujesz w Google?", "opts": ["A: 'Dlaczego Bitcoin to przyszłość' / 'Prognozy wzrostu'.", "B: 'Zagrożenia dla rynku krypto' / 'Analiza ryzyka'."]},
-    {"id": "CB_2", "type": "Confirmation", "q": "Spółka ma zysk zgodny z oczekiwaniami, ale drastycznie wzrosło zadłużenie.", "opts": ["A: Skupiasz się na zysku ('Dowożą wyniki!') ignorując dług.", "B: Analizujesz strukturę długu, martwiąc się o płynność."]},
-    {"id": "CB_3", "type": "Confirmation", "q": "Twój analityk rekomenduje 'Kupuj'. Inny analityk pisze 'Sprzedaj' (błędy w księgowości).", "opts": ["A: Czytasz raport swojego analityka, by się upewnić. Drugi odrzucasz.", "B: Czytasz uważnie negatywny raport, by sprawdzić, czy Twój analityk się nie myli."]},
-    {"id": "HB_1", "type": "Hindsight", "q": "Patrzysz na wykres krachu z 2008 roku. Co myślisz?", "opts": ["A: 'Wskaźniki były absurdalne, każdy rozsądny by to przewidział'.", "B: 'W tamtym czasie sytuacja była niejednoznaczna'."]},
-    {"id": "HB_2", "type": "Hindsight", "q": "Fundusz zarobił 40% (rynek 5%) dzięki jednej ryzykownej transakcji na opcjach.", "opts": ["A: Powierzasz mu pieniądze – wynik dowodzi geniuszu zarządzającego.", "B: Rezygnujesz – uważasz, że miał po prostu szczęście (zbyt duże ryzyko)."]},
-    {"id": "HB_3", "type": "Hindsight", "q": "Wspominasz bańkę na spółkach Growth. Jak oceniasz swoje ówczesne myśli?", "opts": ["A: 'Wiedziałem, że to bańka i tylko czekałem aż pęknie'.", "B: 'Wtedy argumenty za wzrostami wydawały się równie silne'."]}
+# --- PYTANIA ANKIETOWE (STAŁA KOLEJNOŚĆ) ---
+FIXED_QUESTIONS = [
+    {
+        "id": "Q01_Overconfidence",
+        "q": "Pytanie 1: Pracujesz w branży IT i budujesz portfel emerytalny na 30 lat. Twoja wiedza o technologii jest bardzo szeroka.",
+        "opts": [
+            "A: Inwestujesz 80% środków w spółki technologiczne, bo na tym się znasz i potrafisz ocenić ich produkty lepiej niż przeciętny inwestor.",
+            "B: Dywersyfikujesz portfel o sektory, których nie znasz (banki, surowce), mimo że czujesz się w nich mniej pewnie."
+        ]
+    },
+    {
+        "id": "Q02_LossAversion_Loss",
+        "q": "Pytanie 2: Kupiłeś akcje po 100 PLN, obecnie kosztują 70 PLN (-30%). Fundamenty branży pogarszają się przez nowe regulacje, a spółka tnie dywidendy.",
+        "opts": [
+            "A: Natychmiast zamykasz pozycję, by przenieść pozostały kapitał tam, gdzie ma on większy potencjał wzrostu.",
+            "B: Trzymasz akcje. Czekasz na korektę wzrostową, by sprzedać je chociaż po 90 PLN i zminimalizować odczuwaną stratę."
+        ]
+    },
+    {
+        "id": "Q03_Recency",
+        "q": "Pytanie 3: Masz do wyboru dwa fundusze akcyjne o identycznych opłatach:",
+        "opts": [
+            "A: Fundusz \"Lider Wzrostu\" – właśnie otrzymał nagrodę \"Fundusz Roku\", a w ostatnim kwartale zarobił spektakularne 15%.",
+            "B: Fundusz \"Systematyczny\" – od 10 lat dowozi stabilne 7-8%, ale w tym roku nikt o nim nie pisze w mediach."
+        ]
+    },
+    {
+        "id": "Q04_Framing_Gain",
+        "q": "Pytanie 4: Otrzymałeś spadek 100 000 PLN. Masz dwie opcje:",
+        "opts": [
+            "A: Bezpieczna obligacja, która gwarantuje Ci pewne 30 000 PLN zysku ponad inflację.",
+            "B: Ryzykowny fundusz, w którym masz 30% szans na zysk 100 000 PLN i 70% szans na brak zysku."
+        ]
+    },
+    {
+        "id": "Q05_LossAversion_Gain",
+        "q": "Pytanie 5: Kupiłeś akcje po 50 PLN, dziś kosztują 80 PLN (+60%). Analiza fundamentalna sugeruje, że są warte 100 PLN, ale czujesz niepokój, że rynek może spaść.",
+        "opts": [
+            "A: Sprzedajesz teraz, aby \"zaksięgować zysk\" i nie pozwolić mu uciec.",
+            "B: Trzymasz pozycję zgodnie z analizą, pozwalając zyskom rosnąć do wyznaczonego celu."
+        ]
+    },
+    {
+        "id": "Q06_Confirmation",
+        "q": "Pytanie 6: Spółka, którą lubisz, publikuje raport. Zysk jest dobry, ale zadłużenie niebezpiecznie wzrosło.",
+        "opts": [
+            "A: Skupiasz się na zyskach (\"Wiedziałem, że to dobra firma!\") i uznajesz dług za niezbędny koszt rozwoju.",
+            "B: Analizujesz strukturę długu, dopuszczając myśl, że Twoja dotychczasowa pozytywna opinia o spółce może wymagać rewizji."
+        ]
+    },
+    {
+        "id": "Q07_Framing_Loss",
+        "q": "Pytanie 7: Otrzymałeś wezwanie do zapłaty 100 000 PLN podatku. Możesz wybrać:",
+        "opts": [
+            "A: Godzisz się na ugodę i płacisz na pewno 70 000 PLN.",
+            "B: Idziesz do sądu: masz 30% szans, że nie zapłacisz nic, i 70% szans, że zapłacisz pełne 100 000 PLN."
+        ]
+    },
+    # --- PRZEJŚCIE NA STRONĘ 2 ---
+    {
+        "id": "Q08_Anchoring",
+        "q": "Pytanie 8: Kupiłeś akcje po 200 PLN, spadły do 150 PLN. Dziś nagle odbiły do 198 PLN.",
+        "opts": [
+            "A: Sprzedajesz natychmiast, czując ulgę, że prawie nic nie straciłeś.",
+            "B: Oceniasz spółkę po obecnej cenie (198 PLN), ignorując fakt, że kiedyś płaciłeś za nią 200 PLN."
+        ]
+    },
+    {
+        "id": "Q09_Hindsight",
+        "q": "Pytanie 9: Patrzysz na wykres historyczny wielkiego krachu finansowego. Co myślisz?",
+        "opts": [
+            "A: \"To było oczywiste – wyceny były absurdalne, wskaźniki świeciły na czerwono, każdy mógł to przewidzieć\".",
+            "B: \"Sytuacja wtedy była bardzo niejasna, a głosy o krachu mieszały się z bardzo silnymi argumentami za dalszymi wzrostami\"."
+        ]
+    },
+    {
+        "id": "Q10_Availability_Fear",
+        "q": "Pytanie 10: Widzisz w mediach materiał o katastrofie budowlanej w Azji. Masz akcje solidnej firmy budowlanej z Europy, które lekko spadają przez ogólny sentyment.",
+        "opts": [
+            "A: Rozważasz sprzedaż, bo obraz katastrofy wywołuje w Tobie silny lęk przed ryzykiem w tej branży.",
+            "B: Ignorujesz newsa jako nieistotny dla fundamentów Twojej europejskiej firmy."
+        ]
+    },
+    {
+        "id": "Q11_Confirmation_Search",
+        "q": "Pytanie 11: Chcesz kupić Bitcoina. Jakich informacji szukasz w internecie?",
+        "opts": [
+            "A: Wpisujesz: \"Prognozy wzrostu Bitcoina 2025\" lub \"Dlaczego krypto to przyszłość\".",
+            "B: Wpisujesz: \"Największe zagrożenia dla Bitcoina\" lub \"Dlaczego Bitcoin może spaść\"."
+        ]
+    },
+    {
+        "id": "Q12_OutcomeBias",
+        "q": "Pytanie 12: Fundusz \"Alpha\" zarobił 40% w rok (rynek 5%). Wynik to efekt jednej, ekstremalnie ryzykownej transakcji (wszystko na jedną kartę). Zarządzający twierdzi, że \"miał nosa\".",
+        "opts": [
+            "A: Inwestujesz tam. Wynik 40% to namacalny dowód na skuteczność tego człowieka.",
+            "B: Rezygnujesz. Uważasz, że wynik to efekt szczęścia, a proces decyzyjny jest zbyt ryzykowny."
+        ]
+    },
+    {
+        "id": "Q13_Confirmation_Auth",
+        "q": "Pytanie 13: Twój ulubiony analityk mówi \"Kupuj X\". Inny, nieznany Ci analityk, publikuje raport \"Sprzedaj X\", wytykając błędy w księgowości firmy.",
+        "opts": [
+            "A: Ignorujesz raport \"Sprzedaj\", bo ten drugi analityk pewnie chce manipulować kursem lub się myli.",
+            "B: Czytasz raport \"Sprzedaj\" z dużą uwagą, szukając dziur w argumentacji swojego ulubionego analityka."
+        ]
+    },
+    {
+        "id": "Q14_Hindsight_Bubble",
+        "q": "Pytanie 14: Pamiętasz okres szalonych wzrostów na spółkach technologicznych przed ich spadkiem. Jak oceniasz swoje ówczesne nastawienie?",
+        "opts": [
+            "A: \"Od początku czułem, że to bańka i tylko czekałem na krach, to było logiczne\".",
+            "B: \"W tamtym czasie czułem dużą niepewność i przyznaję, że argumenty za wzrostami też wydawały mi się wtedy sensowne\"."
+        ]
+    }
 ]
-
-if 'shuffled_questions' not in st.session_state:
-    q_copy = ALL_QUESTIONS.copy()
-    random.shuffle(q_copy)
-    st.session_state.shuffled_questions = q_copy
 
 # --- FUNKCJE ---
 
@@ -175,13 +271,12 @@ def pad_history(history_list, total_length):
     padding = [None] * (total_length - len(base))
     return base + padding
 
-# Funkcja kolorująca tabelę
 def color_outcome(val):
     if isinstance(val, str):
         if "WYGRANA" in val:
-            return 'color: #2e7d32; font-weight: bold' # Zielony
+            return 'color: #2e7d32; font-weight: bold'
         elif "PRZEGRANA" in val:
-            return 'color: #c62828; font-weight: bold' # Czerwony
+            return 'color: #c62828; font-weight: bold'
     return ''
 
 # --- STRONY ---
@@ -322,11 +417,10 @@ def show_game1():
         })
         st.rerun()
 
-# --- GRA 2: MONETA (FIX UI + KOLORY) ---
+# --- GRA 2: MONETA ---
 
 def show_game2_intro():
     st.header("Część 2: Zakład o rzut monetą")
-    # POPRAWA FORMATOWANIA: CZYSTA LISTA HTML
     st.markdown("""
     <div class="instruction-card">
         <h3>Zasady:</h3>
@@ -373,10 +467,7 @@ def show_game2():
                 next_page('survey')
             return
 
-        # 1. Wybór kwoty
         bet_amount = st.number_input("Ile PLN stawiasz?", min_value=0.0, max_value=float(cap), value=min(10.0, cap), step=1.0)
-        
-        # 2. Wybór strony (BEZ PROCENTÓW w etykiecie)
         bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"])
         
         if st.button("RZUĆ MONETĄ", type="primary"):
@@ -388,7 +479,6 @@ def show_game2():
             if (user_chose_heads and is_heads) or (not user_chose_heads and not is_heads):
                 win = True
                 pnl = bet_amount
-                # Etykieta do tabeli
                 result_label = f"WYGRANA ({coin_result})"
                 st.success(f"Wypadł {coin_result}! Wygrywasz {bet_amount:.2f} PLN.")
             else:
@@ -397,17 +487,15 @@ def show_game2():
                 result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # % Kapitału
             bet_pct = (bet_amount / cap) * 100 if cap > 0 else 0
 
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # NOWA STRUKTURA TABELI: runda | twój wybór | rezultat | stawka | % kapitału
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
-                "Rezultat": result_label, # To będzie kolorowane
+                "Rezultat": result_label,
                 "Stawka": f"{bet_amount:.2f} PLN",
                 "% Kapitału": f"{bet_pct:.1f}%"
             })
@@ -434,10 +522,7 @@ def show_game2():
     with col_hist:
         st.write("### Historia Gier")
         if st.session_state.g2_table_data:
-            # Tworzymy DataFrame do wyświetlenia
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
-            
-            # KOLOROWANIE TABELI (Zielony/Czerwony w kolumnie Rezultat)
             st.dataframe(
                 df_hist.style.map(color_outcome, subset=['Rezultat']),
                 height=500, 
@@ -445,24 +530,60 @@ def show_game2():
                 hide_index=True
             )
 
-# --- ANKIETA ---
+# --- ANKIETA (PODZIELONA NA 2 STRONY) ---
 
 def show_survey():
     st.header("Część 3: Scenariusze")
-    with st.form("survey_form"):
-        answers = {}
-        for i, q_data in enumerate(st.session_state.shuffled_questions):
-            st.markdown(f"**Sytuacja {i+1}**")
-            st.write(q_data['q'])
-            answers[q_data['id']] = st.radio("Decyzja:", q_data['opts'], key=q_data['id'], index=None)
+    
+    # Podział pytań: strona 1 (0-6), strona 2 (7-13)
+    page_num = st.session_state.survey_page_num
+    
+    if page_num == 1:
+        st.progress(50)
+        current_questions = FIXED_QUESTIONS[:7]
+        btn_label = "Dalej (Strona 2/2)"
+    else:
+        st.progress(100)
+        current_questions = FIXED_QUESTIONS[7:]
+        btn_label = "Zakończ badanie"
+
+    with st.form(f"survey_form_{page_num}"):
+        # Tymczasowy słownik na odpowiedzi z tej strony
+        # (ale zapisujemy go globalnie do session_state przy submicie)
+        for q_data in current_questions:
+            st.markdown(f"**{q_data['q']}**")
+            # Klucz musi być unikalny dla każdego pytania
+            # Jeśli user już odpowiedział (np. cofnął się - choć tu nie ma cofania),
+            # można by dać default, ale tu startujemy z pustym.
+            val = st.radio("Wybierz opcję:", q_data['opts'], key=q_data['id'], index=None)
             st.markdown("---")
         
-        if st.form_submit_button("Zakończ badanie"):
-            if any(v is None for v in answers.values()):
-                st.warning("Proszę odpowiedzieć na wszystkie pytania.")
+        submitted = st.form_submit_button(btn_label)
+        
+        if submitted:
+            # Sprawdzenie czy wszystkie na tej stronie są wypełnione
+            # Pobieramy odpowiedzi z session_state po kluczach
+            missing = False
+            current_answers = {}
+            
+            for q in current_questions:
+                ans = st.session_state.get(q['id'])
+                if ans is None:
+                    missing = True
+                else:
+                    current_answers[q['id']] = ans
+            
+            if missing:
+                st.warning("Proszę odpowiedzieć na wszystkie pytania na tej stronie.")
             else:
-                st.session_state.results['survey_answers'] = answers
-                next_page('finish')
+                # Zapisujemy odpowiedzi do głównego słownika
+                st.session_state.results['survey_answers'].update(current_answers)
+                
+                if page_num == 1:
+                    st.session_state.survey_page_num = 2
+                    st.rerun()
+                else:
+                    next_page('finish')
 
 def show_finish():
     st.success("Badanie zakończone! Dziękujemy.")
