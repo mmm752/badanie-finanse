@@ -470,49 +470,236 @@ def next_page(page_name):
 
 
 
-def save_to_google_sheets(data_dict):
+# --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE) ---
 
-    """Wysyła dane do Google Sheets - wersja naprawiona"""
+def save_data_multi_sheet(data_package):
+    """
+    Zapisuje dane do trzech oddzielnych arkuszy:
+    1. Uczestnicy_Ankieta (1 wiersz/user)
+    2. G1_Gielda_Szczegoly (40 wierszy/user)
+    3. G2_Moneta_Szczegoly (40 wierszy/user)
+    """
+    # Nazwy arkuszy
+    SHEET_NAMES = {
+        "main": "Uczestnicy_Ankieta",
+        "g1": "G1_Gielda_Szczegoly",
+        "g2": "G2_Moneta_Szczegoly"
+    }
 
     if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
-
         try:
-
             credentials = Credentials.from_service_account_info(
-
                 st.secrets["gcp_service_account"],
-
                 scopes=[
-
                     "https://www.googleapis.com/auth/spreadsheets",
-
                     "https://www.googleapis.com/auth/drive"
-
                 ],
-
             )
-
             gc = gspread.authorize(credentials)
-
             sh = gc.open("Wyniki_Badania")
-
-            worksheet = sh.worksheet("Dane_Surowe")
-
-           
-
-            values = [str(v) for v in data_dict.values()]
-
-            worksheet.append_row(values)
-
+            
+            # Zapis do 3 arkuszy
+            for key, rows in data_package.items():
+                if not rows: continue
+                try:
+                    ws = sh.worksheet(SHEET_NAMES[key])
+                    ws.append_rows(rows)
+                except Exception as inner_e:
+                    st.warning(f"Nie znaleziono arkusza {SHEET_NAMES[key]}, pomijam. ({inner_e})")
             return True
-
         except Exception as e:
+            st.error(f"Błąd GSheets API: {e}")
+            # Fallback to CSV local
+            pass
 
-            if "200" in str(e): return True
+    # Zapis lokalny do 3 plików CSV (POPRAWIONA CZĘŚĆ)
+    try:
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        for key, rows in data_package.items():
+            if not rows: continue
+            filename = f"wyniki_{key}_{timestamp_str}.csv"
+            # Zapisujemy bez nagłówków, bo to append mode w teorii, 
+            # ale przy tworzeniu nowych plików per user nagłówki by się przydały.
+            # Tutaj wersja uproszczona (zrzut danych):
+            pd.DataFrame(rows).to_csv(filename, index=False, header=False)
+        return True
+    except Exception as e:
+        st.error(f"Błąd zapisu lokalnego: {e}")
+        return False
 
-            st.error(f"Błąd zapisu Google Sheets: {e}")
+def show_finish():
+    st.success("Badanie zakończone! Trwa przetwarzanie i zapisywanie metryk...")
+    
+    uid = st.session_state.user_id
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    demo = st.session_state.results['demographics']
 
-            return False
+    # --- 1. PRZYGOTOWANIE ARKUSZA GŁÓWNEGO (UCZESTNICY + ANKIETA) ---
+    # Flatten survey answers
+    survey_flat = []
+    # Zakładamy stałą kolejność pytań, ale dla bezpieczeństwa iterujemy po ID
+    # (Tutaj upraszczamy do listy wartości posortowanej po kluczach lub znanej kolejności)
+    sorted_q_ids = sorted(st.session_state.results['survey_answers'].keys())
+    for q_id in sorted_q_ids:
+        raw_ans = st.session_state.results['survey_answers'][q_id]
+        # Wyciągamy tylko literę (A/B)
+        ans_letter = raw_ans.split(":")[0] if ":" in raw_ans else raw_ans
+        survey_flat.append(ans_letter)
+
+    main_row = [
+        uid, ts,
+        demo.get('age'), demo.get('gender'), demo.get('education'), 
+        demo.get('finance_related'), demo.get('inv_experience'), 
+        demo.get('real_investing'), demo.get('risk_tolerance'),
+        st.session_state.g1_history_user[-1], # Wynik G1
+        st.session_state.g2_capital           # Wynik G2
+    ] + survey_flat
+    
+    # --- 2. PRZYGOTOWANIE ARKUSZA G1 (GIEŁDA - SZCZEGÓŁY) ---
+    g1_rows = []
+    g1_hist = st.session_state.results['game1_history']
+    prev_choice = None
+    prev_cap = 10000.0
+    
+    for i, rec in enumerate(g1_hist):
+        # Indexy do pobrania danych rynkowych (DATA_A/B)
+        # rec['round'] to numer rundy (1..40), więc index to round-1
+        idx_curr = rec['round'] 
+        idx_prev = idx_curr - 1
+        
+        # Obliczanie zmian rynkowych (Context)
+        val_a_curr = DATA_A[idx_curr] if idx_curr < len(DATA_A) else DATA_A[-1]
+        val_a_prev = DATA_A[idx_prev] if idx_prev < len(DATA_A) else DATA_A[0]
+        ret_a = (val_a_curr - val_a_prev) / val_a_prev
+        
+        val_b_curr = DATA_B[idx_curr] if idx_curr < len(DATA_B) else DATA_B[-1]
+        val_b_prev = DATA_B[idx_prev] if idx_prev < len(DATA_B) else DATA_B[0]
+        ret_b = (val_b_curr - val_b_prev) / val_b_prev
+
+        # Metryki Użytkownika
+        choice = rec['choice']
+        user_ret = rec['return']
+        cap_curr = rec['capital']
+        pnl = cap_curr - prev_cap
+        
+        # --- FEATURE ENGINEERING G1 ---
+        # 1. Kierunek rynku (1 = Wzrost, -1 = Spadek)
+        dir_a = 1 if ret_a >= 0 else -1
+        dir_b = 1 if ret_b >= 0 else -1
+        
+        # 2. Wynik gracza (1 = Zysk, 0 = Strata/Zero)
+        user_win = 1 if pnl > 0 else 0
+        
+        # 3. Zmiana strategii (Switching)
+        # Czy zmienił wybór względem poprzedniej rundy? (np. A -> B, albo A -> Cash)
+        is_switch = 1 if (prev_choice is not None and choice != prev_choice) else 0
+        
+        # 4. Użycie lewara (Binary)
+        lev_bin = 1 if rec['leverage'] else 0
+
+        row = [
+            uid,                # User_ID
+            rec['round'],       # Runda
+            # --- KONTEKST RYNKOWY ---
+            round(ret_a, 4),    # Zwrot_A
+            dir_a,              # Kierunek_A (1/-1)
+            round(ret_b, 4),    # Zwrot_B
+            dir_b,              # Kierunek_B (1/-1)
+            # --- DECYZJA ---
+            choice,             # Wybór (A/B/Cash)
+            lev_bin,            # Lewar (0/1)
+            is_switch,          # Zmiana_Strategii (0/1)
+            # --- WYNIK ---
+            round(user_ret, 4), # Zwrot_User
+            round(pnl, 2),      # PnL_Kwota
+            user_win,           # Wynik_Binarny (1=Zysk)
+            round(cap_curr, 2)  # Kapitał_Po
+        ]
+        g1_rows.append(row)
+        
+        prev_cap = cap_curr
+        prev_choice = choice
+
+    # --- 3. PRZYGOTOWANIE ARKUSZA G2 (MONETA - SZCZEGÓŁY) ---
+    g2_rows = []
+    g2_hist = st.session_state.results['game2_history']
+    # Musimy odtworzyć stan sprzed zakładu
+    cap_runner = 100.0
+    prev_bet = 0.0
+    prev_result_type = None # WIN/LOSS
+    prev_side = None # HEADS/TAILS
+
+    for rec in g2_hist:
+        bet = rec['bet_amount']
+        choice = rec['choice']
+        outcome = rec['coin_result'] # Co wypadło
+        res_type = rec['result']     # WIN/LOSS
+        cap_after = rec['capital_after']
+        
+        # --- FEATURE ENGINEERING G2 ---
+        
+        # 1. Bet Ratio (Stosunek stawki do kapitału) - test H3 i H5
+        # Zabezpieczenie przed dzieleniem przez 0
+        ratio = (bet / cap_runner) if cap_runner > 0 else 0.0
+        
+        # 2. Odchylenie od Kelly'ego (Kelly dla p=0.6, q=0.4, b=1 wynosi 20% = 0.20)
+        # Jeśli > 0, to over-betting.
+        kelly_diff = ratio - 0.20
+        
+        # 3. Martingale Flag (Test H4)
+        # Definicja: Poprzednio przegrał ORAZ teraz stawia >= 2x poprzednia stawka
+        is_martingale = 0
+        if prev_result_type == 'LOSS' and prev_bet > 0:
+            if bet >= (prev_bet * 2):
+                is_martingale = 1
+                
+        # 4. Gambler's Fallacy Switch (Test H1)
+        # Czy zmienił stronę (np. z Orła na Reszkę)?
+        side_switch = 1 if (prev_side is not None and choice != prev_side) else 0
+        
+        # 5. Wynik binarny
+        win_bin = 1 if res_type == 'WIN' else 0
+
+        row = [
+            uid,                # User_ID
+            rec['round'],       # Runda
+            round(cap_runner, 2), # Kapitał_Przed
+            # --- DECYZJA ---
+            choice,             # Wybór (HEADS/TAILS)
+            bet,                # Stawka
+            round(ratio, 4),    # Bet_Ratio (Kluczowa metryka)
+            round(kelly_diff, 4), # Odchylenie_Kelly
+            is_martingale,      # Próba_Odegrania_Martingale (0/1)
+            side_switch,        # Zmiana_Strony (0/1)
+            # --- WYNIK ---
+            outcome,            # Co_Wypadło
+            win_bin,            # Czy_Wygrana (0/1)
+            round(cap_after, 2) # Kapitał_Po
+        ]
+        g2_rows.append(row)
+        
+        # Update runnerów
+        cap_runner = cap_after
+        prev_bet = bet
+        prev_result_type = res_type
+        prev_side = choice
+
+    # --- ZAPIS ---
+    package = {
+        "main": [main_row], # To jest lista list (jeden wiersz)
+        "g1": g1_rows,
+        "g2": g2_rows
+    }
+    
+    if 'saved' not in st.session_state:
+        success = save_data_multi_sheet(package)
+        if success:
+            st.session_state.saved = True
+            st.balloons()
+            st.markdown("### Dziękujemy!")
+            st.markdown("Dane zostały pomyślnie zapisane w 3 arkuszach.")
+        else:
+            st.error("Problem z zapisem danych.")
 
     else:
 
@@ -1278,37 +1465,7 @@ def show_survey():
 
 
 
-def show_finish():
 
-    st.success("Badanie zakończone! Dziękujemy.")
-
-   
-
-    final_data = {
-
-        "user_id": st.session_state.user_id,
-
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-
-        **st.session_state.results['demographics'],
-
-        "g1_final": st.session_state.g1_history_user[-1],
-
-        "g2_final": st.session_state.g2_capital,
-
-        **st.session_state.results['survey_answers']
-
-    }
-
-   
-
-    if 'saved' not in st.session_state:
-
-        save_to_google_sheets(final_data)
-
-        st.session_state.saved = True
-
-        st.balloons()
 
 
 
