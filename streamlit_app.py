@@ -46,6 +46,9 @@ st.markdown("""
         padding-left: 20px;
         line-height: 1.6;
     }
+    .instruction-card li {
+        margin-bottom: 10px;
+    }
     .important-text {
         color: #003366;
         font-weight: 800;
@@ -59,23 +62,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- DANE GIEŁDOWE (HARDCODED - WERSJA TRUDNA) ---
-# Indeks A (S&P 500): Stabilny start, pułapka w środku (krach w rundach 25-30), powolne odrabianie.
+# --- DANE GIEŁDOWE (WERSJA TRUDNA) ---
 DATA_A = [
-    4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00, # 1-10
-    4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00, # 11-20
-    4700.00, 4750.00, 4800.00, 4750.00, 4600.00, 4400.00, 4200.00, 4100.00, 4050.00, 4150.00, # 21-30
-    4200.00, 4250.00, 4300.00, 4350.00, 4320.00, 4400.00, 4450.00, 4420.00, 4480.00, 4500.00  # 31-40
+    4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00, 
+    4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00, 
+    4700.00, 4750.00, 4800.00, 4750.00, 4600.00, 4400.00, 4200.00, 4100.00, 4050.00, 4150.00, 
+    4200.00, 4250.00, 4300.00, 4350.00, 4320.00, 4400.00, 4450.00, 4420.00, 4480.00, 4500.00  
 ]
-# Indeks B (Nasdaq): Szarpany, duże zyski (bańka), ale bolesny spadek NA KOŃCU.
 DATA_B = [
-    11000.00, 11500.00, 11200.00, 11800.00, 12500.00, 12200.00, 12000.00, 12600.00, 13000.00, 12800.00, # 1-10
-    13200.00, 13500.00, 14000.00, 13800.00, 13500.00, 13200.00, 13000.00, 13400.00, 13800.00, 14200.00, # 11-20
-    14500.00, 14200.00, 14000.00, 14400.00, 14800.00, 15200.00, 15500.00, 15800.00, 15500.00, 15200.00, # 21-30
-    15000.00, 14800.00, 14500.00, 14200.00, 13800.00, 13000.00, 12500.00, 12200.00, 12400.00, 12300.00  # 31-40
+    11000.00, 11500.00, 11200.00, 11800.00, 12500.00, 12200.00, 12000.00, 12600.00, 13000.00, 12800.00, 
+    13200.00, 13500.00, 14000.00, 13800.00, 13500.00, 13200.00, 13000.00, 13400.00, 13800.00, 14200.00, 
+    14500.00, 14200.00, 14000.00, 14400.00, 14800.00, 15200.00, 15500.00, 15800.00, 15500.00, 15200.00, 
+    15000.00, 14800.00, 14500.00, 14200.00, 13800.00, 13000.00, 12500.00, 12200.00, 12400.00, 12300.00  
 ]
-
-# Etykiety tekstowe
 LABELS_TEXT = [
     "wrz 22", "paź 22", "lis 22", "gru 22", "sty 23", "lut 23", "mar 23", "kwi 23", "maj 23", "cze 23",
     "lip 23", "sie 23", "wrz 23", "paź 23", "lis 23", "gru 23", "sty 24", "lut 24", "mar 24", "kwi 24",
@@ -83,7 +82,6 @@ LABELS_TEXT = [
     "mar 25", "kwi 25", "maj 25", "cze 25", "lip 25", "sie 25", "wrz 25", "paź 25", "lis 25", "gru 25"
 ]
 
-# --- FIX WYKRESU: PRAWDZIWE DATY ---
 def get_real_dates():
     dates = []
     y = 2022
@@ -173,10 +171,18 @@ def save_to_google_sheets(data_dict):
             return False
 
 def pad_history(history_list, total_length):
-    """Pomocnicza funkcja do wykresu"""
     base = history_list[:total_length]
     padding = [None] * (total_length - len(base))
     return base + padding
+
+# Funkcja kolorująca tabelę
+def color_outcome(val):
+    if isinstance(val, str):
+        if "WYGRANA" in val:
+            return 'color: #2e7d32; font-weight: bold' # Zielony
+        elif "PRZEGRANA" in val:
+            return 'color: #c62828; font-weight: bold' # Czerwony
+    return ''
 
 # --- STRONY ---
 
@@ -229,7 +235,6 @@ def show_game1_intro():
     </div>
     """, unsafe_allow_html=True)
     
-    # Inicjalizacja Gry 1
     if 'g1_round' not in st.session_state:
         st.session_state.g1_round = 0 
         st.session_state.g1_capital = 10000.0
@@ -250,7 +255,6 @@ def show_game1():
         next_page('game2_intro')
         return
 
-    # Obliczenie zmiany
     current_cap = st.session_state.g1_history_user[-1]
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
@@ -260,17 +264,14 @@ def show_game1():
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
     
-    # --- WYKRES (DATA JAKO INDEX) ---
     chart_data = pd.DataFrame({
         "S&P 500": pad_history(st.session_state.g1_history_A, total_len),
         "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
     chart_data.index = REAL_DATES
-    
     st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"]) 
     
-    # Lewar
     leverage_active = False
     if current_idx >= 20: 
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
@@ -319,26 +320,32 @@ def show_game1():
             "return": user_ret,
             "capital": new_cap
         })
-        
         st.rerun()
 
-# --- GRA 2: MONETA (NOWA MECHANIKA) ---
+# --- GRA 2: MONETA (FIX UI + KOLORY) ---
 
 def show_game2_intro():
     st.header("Część 2: Zakład o rzut monetą")
+    # POPRAWA FORMATOWANIA: CZYSTA LISTA HTML
     st.markdown("""
     <div class="instruction-card">
         <h3>Zasady:</h3>
-        1. Otrzymujesz na start <b>100 PLN</b>.
-        2. Czeka Cię <b>40 rzutów</b> wirtualną monetą.
-        3. Prawdopodobieństwa są stałe i znane:
-           <ul>
-               <li>🦅 <b>ORZEŁ: 60% szans</b> (Wygrana)</li>
-               <li>📉 <b>RESZKA: 40% szans</b> (Wygrana)</li>
-           </ul>
-        4. W każdej rundzie decydujesz:
-           - <b>Na co stawiasz</b> (Orzeł czy Reszka).
-           - <b>Ile pieniędzy stawiasz</b> (konkretna kwota).
+        <ul>
+            <li>💰 <b>Start:</b> Otrzymujesz na start <b>100 PLN</b>.</li>
+            <li>🎲 <b>Długość:</b> Czeka Cię <b>40 rzutów</b> wirtualną monetą.</li>
+            <li>📊 <b>Prawdopodobieństwa (stałe):</b>
+                <ul>
+                    <li>🦅 <b>ORZEŁ:</b> 60% szans (Wygrana)</li>
+                    <li>📉 <b>RESZKA:</b> 40% szans (Wygrana)</li>
+                </ul>
+            </li>
+            <li>⚙️ <b>Twoja decyzja w każdej rundzie:</b>
+                <ul>
+                    <li>Na co stawiasz (Orzeł czy Reszka).</li>
+                    <li>Ile pieniędzy stawiasz.</li>
+                </ul>
+            </li>
+        </ul>
     </div>
     """, unsafe_allow_html=True)
     
@@ -366,48 +373,45 @@ def show_game2():
                 next_page('survey')
             return
 
-        # --- NOWE WEJŚCIA DANYCH ---
-        # 1. Wybór kwoty (PLN)
+        # 1. Wybór kwoty
         bet_amount = st.number_input("Ile PLN stawiasz?", min_value=0.0, max_value=float(cap), value=min(10.0, cap), step=1.0)
         
-        # 2. Wybór strony (Orzeł/Reszka)
-        bet_side = st.radio("Obstawiam:", ["ORZEŁ (60% szans)", "RESZKA (40% szans)"])
+        # 2. Wybór strony (BEZ PROCENTÓW w etykiecie)
+        bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"])
         
         if st.button("RZUĆ MONETĄ", type="primary"):
-            # Logika rzutu
             is_heads = random.random() < 0.6
             coin_result = "ORZEŁ" if is_heads else "RESZKA"
             
-            # Sprawdzenie wygranej
-            # Gracz wygrywa, jeśli obstawił Orła i wypadł Orzeł LUB obstawił Reszkę i wypadła Reszka
             user_chose_heads = "ORZEŁ" in bet_side
             
             if (user_chose_heads and is_heads) or (not user_chose_heads and not is_heads):
                 win = True
                 pnl = bet_amount
-                result_str = "WYGRANA"
+                # Etykieta do tabeli
+                result_label = f"WYGRANA ({coin_result})"
                 st.success(f"Wypadł {coin_result}! Wygrywasz {bet_amount:.2f} PLN.")
             else:
                 win = False
                 pnl = -bet_amount
-                result_str = "PRZEGRANA"
+                result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # Aktualizacja stanu
+            # % Kapitału
+            bet_pct = (bet_amount / cap) * 100 if cap > 0 else 0
+
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # Dodanie do tabeli (na górę)
+            # NOWA STRUKTURA TABELI: runda | twój wybór | rezultat | stawka | % kapitału
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
-                "Wynik Rzutu": coin_result,
-                "Stawka": f"{bet_amount:.2f}",
-                "Rezultat": result_str,
-                "Kapitał Po": f"{st.session_state.g2_capital:.2f}"
+                "Rezultat": result_label, # To będzie kolorowane
+                "Stawka": f"{bet_amount:.2f} PLN",
+                "% Kapitału": f"{bet_pct:.1f}%"
             })
             
-            # Zapis do bazy
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
                 "bet_amount": bet_amount,
@@ -422,18 +426,24 @@ def show_game2():
                 time.sleep(1.5)
                 next_page('survey')
             else:
-                time.sleep(1.0) # Chwila na zobaczenie wyniku
+                time.sleep(1.0)
                 st.rerun()
         
-        # Wykres pod spodem
         st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
         st.write("### Historia Gier")
-        # Wyświetlenie pełnej tabeli
         if st.session_state.g2_table_data:
+            # Tworzymy DataFrame do wyświetlenia
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
-            st.dataframe(df_hist, height=500, use_container_width=True, hide_index=True)
+            
+            # KOLOROWANIE TABELI (Zielony/Czerwony w kolumnie Rezultat)
+            st.dataframe(
+                df_hist.style.map(color_outcome, subset=['Rezultat']),
+                height=500, 
+                use_container_width=True, 
+                hide_index=True
+            )
 
 # --- ANKIETA ---
 
