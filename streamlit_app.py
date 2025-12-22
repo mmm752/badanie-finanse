@@ -59,24 +59,28 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- DANE GIEŁDOWE (HARDCODED) ---
-# S&P 500
+# --- DANE GIEŁDOWE (MODYFIKOWANE - TRUDNIEJSZE) ---
+# Scenariusz:
+# Indeks A: Stabilny wzrost, potem bolesna korekta w środku, powolne odrabianie.
+# Indeks B: Bańka spekulacyjna (szybki wzrost), pęknięcie bańki (krach), duża zmienność.
+
+# Indeks A (S&P 500 - Styl "Solidny, ale z korektą")
 DATA_A = [
-    3585.62, 3871.98, 4080.11, 3839.50, 4076.60, 3970.15, 4109.31, 4169.48, 4179.83, 4450.38, # 1-10
-    4588.96, 4507.66, 4288.05, 4193.80, 4567.80, 4769.83, 4845.65, 5096.27, 5254.35, 5035.69, # 11-20
-    5277.51, 5460.48, 5522.30, 5648.40, 5762.48, 5705.45, 6032.38, 5881.63, 6040.53, 5954.50, # 21-30
-    5611.85, 5569.06, 5911.69, 6204.95, 6339.39, 6460.26, 6688.46, 6840.20, 6849.09, 6834.50  # 31-40
+    3600.00, 3750.00, 3900.00, 3850.00, 4000.00, 4100.00, 4150.00, 4200.00, 4300.00, 4400.00, # 1-10 (Wzrost)
+    4450.00, 4500.00, 4480.00, 4400.00, 4350.00, 4300.00, 4200.00, 4100.00, 4000.00, 3950.00, # 11-20 (Szczyt i powolny zjazd)
+    3900.00, 3850.00, 3800.00, 3900.00, 4000.00, 4100.00, 4050.00, 4150.00, 4250.00, 4350.00, # 21-30 (Dno i odbicie)
+    4400.00, 4500.00, 4600.00, 4550.00, 4650.00, 4700.00, 4800.00, 4850.00, 4900.00, 4950.00  # 31-40 (Nowe szczyty)
 ]
 
-# Nasdaq
+# Indeks B (Nasdaq - Styl "Bańka i Krach")
 DATA_B = [
-    10575.62, 10988.15, 11468.00, 10466.48, 11584.55, 11455.54, 12221.91, 12226.58, 12935.29, 13787.92, # 1-10
-    14346.02, 14034.97, 13219.32, 12851.24, 14226.22, 15011.35, 15164.01, 16091.92, 16379.46, 15657.82, # 11-20
-    16735.02, 17732.60, 17599.40, 17713.63, 18189.17, 18095.15, 19218.17, 19310.79, 19627.44, 18847.28, # 21-30
-    17299.29, 17446.34, 19113.77, 20369.73, 21122.45, 21455.55, 22660.01, 23724.96, 23365.69, 23307.62  # 31-40
+    10500.00, 11000.00, 11800.00, 12500.00, 13500.00, 14200.00, 15000.00, 15500.00, 15200.00, 15800.00, # 1-10 (Euforia)
+    16000.00, 15500.00, 14800.00, 14000.00, 13000.00, 12500.00, 12000.00, 11500.00, 11200.00, 11000.00, # 11-20 (Pęknięcie bańki - krach)
+    10800.00, 11200.00, 11500.00, 12000.00, 12500.00, 12200.00, 12800.00, 13000.00, 12500.00, 13200.00, # 21-30 (Zmienność/Niepewność)
+    13500.00, 14000.00, 13800.00, 14200.00, 14500.00, 14000.00, 14800.00, 15000.00, 14500.00, 14800.00  # 31-40 (Boczne ruchy, nie odrobił szczytu)
 ]
 
-# Etykiety tekstowe (dla wyświetlania w nagłówku)
+# Etykiety tekstowe
 LABELS_TEXT = [
     "wrz 22", "paź 22", "lis 22", "gru 22", "sty 23", "lut 23", "mar 23", "kwi 23", "maj 23", "cze 23",
     "lip 23", "sie 23", "wrz 23", "paź 23", "lis 23", "gru 23", "sty 24", "lut 24", "mar 24", "kwi 24",
@@ -84,10 +88,8 @@ LABELS_TEXT = [
     "mar 25", "kwi 25", "maj 25", "cze 25", "lip 25", "sie 25", "wrz 25", "paź 25", "lis 25", "gru 25"
 ]
 
-# --- NOWOŚĆ: KONWERSJA NA PRAWDZIWE DATY (FIX WYKRESU) ---
+# --- FIX WYKRESU: PRAWDZIWE DATY ---
 def get_real_dates():
-    # Generujemy listę prawdziwych obiektów datetime, żeby wykres był chronologiczny
-    # Start: wrzesień (9) 2022
     dates = []
     y = 2022
     m = 9
@@ -144,7 +146,7 @@ def next_page(page_name):
     st.rerun()
 
 def save_to_google_sheets(data_dict):
-    """Wysyła dane do Google Sheets - wersja naprawiona (konwersja na str + fix błędu 200)"""
+    """Wysyła dane do Google Sheets - wersja naprawiona"""
     if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
         try:
             credentials = Credentials.from_service_account_info(
@@ -158,7 +160,6 @@ def save_to_google_sheets(data_dict):
             sh = gc.open("Wyniki_Badania") 
             worksheet = sh.worksheet("Dane_Surowe")
             
-            # Konwersja wszystkiego na tekst
             values = [str(v) for v in data_dict.values()]
             worksheet.append_row(values)
             return True
@@ -177,7 +178,7 @@ def save_to_google_sheets(data_dict):
             return False
 
 def pad_history(history_list, total_length):
-    """Pomocnicza funkcja do wykresu: uzupełnia listę wartościami None do pełnej długości"""
+    """Pomocnicza funkcja do wykresu"""
     base = history_list[:total_length]
     padding = [None] * (total_length - len(base))
     return base + padding
@@ -223,8 +224,8 @@ def show_game1_intro():
             <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
             <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
             <ul>
-                <li><b>Indeks A:</b> Rynek akcji (S&P 500).</li>
-                <li><b>Indeks B:</b> Rynek technologiczny (Nasdaq).</li>
+                <li><b>Indeks A:</b> Rynek akcji (Stabilniejszy).</li>
+                <li><b>Indeks B:</b> Rynek technologiczny (Agresywny).</li>
                 <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
             </ul>
             <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
@@ -248,13 +249,13 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    total_len = 40 # Stała długość gry
+    total_len = 40
     
     if current_idx >= 39: 
         next_page('game2_intro')
         return
 
-    # Obliczenie zmiany procentowej
+    # Obliczenie zmiany
     current_cap = st.session_state.g1_history_user[-1]
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
@@ -264,22 +265,17 @@ def show_game1():
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
     
-    # --- FIX WYKRESU: UŻYCIE REALNYCH DAT JAKO INDEKSU ---
-    # To zapewnia chronologię i profesjonalny format osi X
-    
+    # --- WYKRES (DATA JAKO INDEX) ---
     chart_data = pd.DataFrame({
         "S&P 500": pad_history(st.session_state.g1_history_A, total_len),
         "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
-    
-    # Przypisanie prawdziwych dat jako indeksu
     chart_data.index = REAL_DATES
     
-    # Rysowanie - Streamlit automatycznie sformatuje oś X jako daty
     st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"]) 
     
-    # Logika Lewaru
+    # Lewar
     leverage_active = False
     if current_idx >= 20: 
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
@@ -321,7 +317,6 @@ def show_game1():
         st.session_state.g1_history_A.append(norm_A)
         st.session_state.g1_history_B.append(norm_B)
         
-        # Zapis
         st.session_state.results['game1_history'].append({
             "round": next_idx, 
             "choice": choice, 
