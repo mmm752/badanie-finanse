@@ -76,50 +76,40 @@ def next_page(page_name):
     st.rerun()
 
 def save_to_google_sheets(data_dict):
-    """Wysyła dane do Google Sheets lub zapisuje lokalnie jeśli brak konfiguracji"""
-    # Przygotowanie płaskiego wiersza danych
-    row = [
-        data_dict.get('user_id'),
-        data_dict.get('timestamp'),
-        data_dict.get('age'),
-        data_dict.get('gender'),
-        data_dict.get('risk_tolerance'),
-        data_dict.get('g1_final_capital'),
-        data_dict.get('g2_final_capital'),
-        # ... tu można dodać więcej kolumn
-    ]
-    # Dodanie odpowiedzi z ankiety w kolejności ID
-    sorted_keys = sorted(data_dict.keys())
-    # (Uproszczony zapis - w produkcji lepiej mapować konkretne kolumny)
+    """Wysyła dane do Google Sheets - wersja naprawiona (konwersja na str + fix błędu 200)"""
     
-    # 1. Próba zapisu do chmury (Google Sheets)
+    # 1. Próba zapisu do chmury
     if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
         try:
-            # Używamy sekretów Streamlit do autoryzacji
             credentials = Credentials.from_service_account_info(
                 st.secrets["gcp_service_account"],
                 scopes=[
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-],
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ],
             )
             gc = gspread.authorize(credentials)
-            # Otwórz arkusz po kluczu lub nazwie
             sh = gc.open("Wyniki_Badania") 
             worksheet = sh.worksheet("Dane_Surowe")
             
-            # Konwersja słownika na listę wartości
-            values = list(data_dict.values())
+            # --- POPRAWKA KLUCZOWA: Konwersja wszystkiego na tekst (str) ---
+            # Dzięki temu liczby z Python (numpy) nie blokują wysyłki
+            values = [str(v) for v in data_dict.values()]
+            
             worksheet.append_row(values)
             return True
         except Exception as e:
+            # --- POPRAWKA KLUCZOWA: Ignorowanie "błędu" 200 ---
+            # Jeśli Google odpowiada "200", to znaczy "OK", więc uznajemy sukces.
+            if "200" in str(e):
+                return True
+            
             st.error(f"Błąd zapisu Google Sheets: {e}")
             return False
     else:
-        # 2. Zapis lokalny (fallback)
+        # 2. Zapis lokalny (jeśli nie ma połączenia z chmurą)
         df = pd.DataFrame([data_dict])
         try:
-            # Tryb 'append' do pliku csv
             with open("lokalne_wyniki.csv", "a") as f:
                 df.to_csv(f, header=f.tell()==0, index=False)
             return True
