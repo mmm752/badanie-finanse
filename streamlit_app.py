@@ -60,25 +60,20 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- DANE GIEŁDOWE (HARDCODED - WERSJA TRUDNA) ---
-# Oba indeksy startują z różnych poziomów, mają różne ścieżki, ale kończą podobnie (+10-12%).
-
 # Indeks A (S&P 500): Stabilny start, pułapka w środku (krach w rundach 25-30), powolne odrabianie.
 DATA_A = [
-    4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00, # 1-10: Spokojny wzrost
-    4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00, # 11-20: Hossa
-    4700.00, 4750.00, 4800.00, 4750.00, 4600.00, 4400.00, 4200.00, 4100.00, 4050.00, 4150.00, # 21-30: KRACH W ŚRODKU
-    4200.00, 4250.00, 4300.00, 4350.00, 4320.00, 4400.00, 4450.00, 4420.00, 4480.00, 4500.00  # 31-40: Odrabianie strat
+    4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00, # 1-10
+    4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00, # 11-20
+    4700.00, 4750.00, 4800.00, 4750.00, 4600.00, 4400.00, 4200.00, 4100.00, 4050.00, 4150.00, # 21-30
+    4200.00, 4250.00, 4300.00, 4350.00, 4320.00, 4400.00, 4450.00, 4420.00, 4480.00, 4500.00  # 31-40
 ]
-# Wynik końcowy A: ok. +12.5%
-
-# Indeks B (Nasdaq): Szarpany, duże zyski (bańka), ale bolesny spadek NA KOŃCU (kara za chciwość).
+# Indeks B (Nasdaq): Szarpany, duże zyski (bańka), ale bolesny spadek NA KOŃCU.
 DATA_B = [
-    11000.00, 11500.00, 11200.00, 11800.00, 12500.00, 12200.00, 12000.00, 12600.00, 13000.00, 12800.00, # 1-10: Zmienność
-    13200.00, 13500.00, 14000.00, 13800.00, 13500.00, 13200.00, 13000.00, 13400.00, 13800.00, 14200.00, # 11-20: Wzrosty
-    14500.00, 14200.00, 14000.00, 14400.00, 14800.00, 15200.00, 15500.00, 15800.00, 15500.00, 15200.00, # 21-30: Euforia (Bańka)
-    15000.00, 14800.00, 14500.00, 14200.00, 13800.00, 13000.00, 12500.00, 12200.00, 12400.00, 12300.00  # 31-40: SPADEK NA KOŃCU
+    11000.00, 11500.00, 11200.00, 11800.00, 12500.00, 12200.00, 12000.00, 12600.00, 13000.00, 12800.00, # 1-10
+    13200.00, 13500.00, 14000.00, 13800.00, 13500.00, 13200.00, 13000.00, 13400.00, 13800.00, 14200.00, # 11-20
+    14500.00, 14200.00, 14000.00, 14400.00, 14800.00, 15200.00, 15500.00, 15800.00, 15500.00, 15200.00, # 21-30
+    15000.00, 14800.00, 14500.00, 14200.00, 13800.00, 13000.00, 12500.00, 12200.00, 12400.00, 12300.00  # 31-40
 ]
-# Wynik końcowy B: ok. +11.8%
 
 # Etykiety tekstowe
 LABELS_TEXT = [
@@ -327,21 +322,23 @@ def show_game1():
         
         st.rerun()
 
-# --- GRA 2: MONETA ---
+# --- GRA 2: MONETA (NOWA MECHANIKA) ---
 
 def show_game2_intro():
-    st.header("Część 2: Wyzwanie Monety")
+    st.header("Część 2: Zakład o rzut monetą")
     st.markdown("""
     <div class="instruction-card">
         <h3>Zasady:</h3>
-        1. Masz <b>100 PLN</b>.
-        2. Rzucasz wirtualną monetą (ok. 20 razy).
-        3. Prawdopodobieństwa:
+        1. Otrzymujesz na start <b>100 PLN</b>.
+        2. Czeka Cię <b>40 rzutów</b> wirtualną monetą.
+        3. Prawdopodobieństwa są stałe i znane:
            <ul>
-               <li>🦅 <b>ORZEŁ (60% szans):</b> Wygrywasz tyle, ile postawiłeś.</li>
-               <li>📉 <b>RESZKA (40% szans):</b> Tracisz stawkę.</li>
+               <li>🦅 <b>ORZEŁ: 60% szans</b> (Wygrana)</li>
+               <li>📉 <b>RESZKA: 40% szans</b> (Wygrana)</li>
            </ul>
-        4. Decydujesz, jaki % kapitału stawiasz w każdym rzucie.
+        4. W każdej rundzie decydujesz:
+           - <b>Na co stawiasz</b> (Orzeł czy Reszka).
+           - <b>Ile pieniędzy stawiasz</b> (konkretna kwota).
     </div>
     """, unsafe_allow_html=True)
     
@@ -355,59 +352,88 @@ def show_game2_intro():
         next_page('game2')
 
 def show_game2():
-    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round}")
+    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 40")
     cap = st.session_state.g2_capital
     
-    col_main, col_hist = st.columns([2, 1])
+    col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        st.metric("Dostępne środki", f"{cap:.2f} PLN")
-        st.line_chart(st.session_state.g2_history_chart)
+        st.metric("Twoje środki", f"{cap:.2f} PLN")
         
-        if cap < 1.0:
+        if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
                 next_page('survey')
             return
 
-        bet_pct = st.slider("Jaki % kapitału stawiasz na ORŁA?", 0, 100, 10)
-        bet_val = cap * (bet_pct / 100)
-        st.info(f"Stawiasz: **{bet_val:.2f} PLN**")
+        # --- NOWE WEJŚCIA DANYCH ---
+        # 1. Wybór kwoty (PLN)
+        bet_amount = st.number_input("Ile PLN stawiasz?", min_value=0.0, max_value=float(cap), value=min(10.0, cap), step=1.0)
         
-        if st.button("RZUĆ MONETĄ"):
-            is_win = random.random() < 0.6
-            pnl = bet_val if is_win else -bet_val
+        # 2. Wybór strony (Orzeł/Reszka)
+        bet_side = st.radio("Obstawiam:", ["ORZEŁ (60% szans)", "RESZKA (40% szans)"])
+        
+        if st.button("RZUĆ MONETĄ", type="primary"):
+            # Logika rzutu
+            is_heads = random.random() < 0.6
+            coin_result = "ORZEŁ" if is_heads else "RESZKA"
+            
+            # Sprawdzenie wygranej
+            # Gracz wygrywa, jeśli obstawił Orła i wypadł Orzeł LUB obstawił Reszkę i wypadła Reszka
+            user_chose_heads = "ORZEŁ" in bet_side
+            
+            if (user_chose_heads and is_heads) or (not user_chose_heads and not is_heads):
+                win = True
+                pnl = bet_amount
+                result_str = "WYGRANA"
+                st.success(f"Wypadł {coin_result}! Wygrywasz {bet_amount:.2f} PLN.")
+            else:
+                win = False
+                pnl = -bet_amount
+                result_str = "PRZEGRANA"
+                st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
+
+            # Aktualizacja stanu
             st.session_state.g2_capital += pnl
-            
-            result_str = "WYGRANA" if is_win else "PRZEGRANA"
-            
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
+            
+            # Dodanie do tabeli (na górę)
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
-                "Stawka": f"{bet_pct}%",
-                "Wynik": result_str,
-                "Kapitał": f"{st.session_state.g2_capital:.2f}"
+                "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
+                "Wynik Rzutu": coin_result,
+                "Stawka": f"{bet_amount:.2f}",
+                "Rezultat": result_str,
+                "Kapitał Po": f"{st.session_state.g2_capital:.2f}"
             })
             
+            # Zapis do bazy
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
-                "bet_pct": bet_pct,
-                "result": "WIN" if is_win else "LOSS",
+                "bet_amount": bet_amount,
+                "choice": "HEADS" if user_chose_heads else "TAILS",
+                "coin_result": "HEADS" if is_heads else "TAILS",
+                "result": "WIN" if win else "LOSS",
                 "capital_after": st.session_state.g2_capital
             })
             
             st.session_state.g2_round += 1
-            if st.session_state.g2_round > 20:
-                time.sleep(0.5)
+            if st.session_state.g2_round > 40:
+                time.sleep(1.5)
                 next_page('survey')
             else:
+                time.sleep(1.0) # Chwila na zobaczenie wyniku
                 st.rerun()
+        
+        # Wykres pod spodem
+        st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
-        st.write("### Historia")
+        st.write("### Historia Gier")
+        # Wyświetlenie pełnej tabeli
         if st.session_state.g2_table_data:
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
-            st.dataframe(df_hist, height=400, hide_index=True)
+            st.dataframe(df_hist, height=500, use_container_width=True, hide_index=True)
 
 # --- ANKIETA ---
 
