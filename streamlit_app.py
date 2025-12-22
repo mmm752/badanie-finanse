@@ -59,26 +59,26 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- DANE GIEŁDOWE (MODYFIKOWANE - TRUDNIEJSZE) ---
-# Scenariusz:
-# Indeks A: Stabilny wzrost, potem bolesna korekta w środku, powolne odrabianie.
-# Indeks B: Bańka spekulacyjna (szybki wzrost), pęknięcie bańki (krach), duża zmienność.
+# --- DANE GIEŁDOWE (HARDCODED - WERSJA TRUDNA) ---
+# Oba indeksy startują z różnych poziomów, mają różne ścieżki, ale kończą podobnie (+10-12%).
 
-# Indeks A (S&P 500 - Styl "Solidny, ale z korektą")
+# Indeks A (S&P 500): Stabilny start, pułapka w środku (krach w rundach 25-30), powolne odrabianie.
 DATA_A = [
-    3600.00, 3750.00, 3900.00, 3850.00, 4000.00, 4100.00, 4150.00, 4200.00, 4300.00, 4400.00, # 1-10 (Wzrost)
-    4450.00, 4500.00, 4480.00, 4400.00, 4350.00, 4300.00, 4200.00, 4100.00, 4000.00, 3950.00, # 11-20 (Szczyt i powolny zjazd)
-    3900.00, 3850.00, 3800.00, 3900.00, 4000.00, 4100.00, 4050.00, 4150.00, 4250.00, 4350.00, # 21-30 (Dno i odbicie)
-    4400.00, 4500.00, 4600.00, 4550.00, 4650.00, 4700.00, 4800.00, 4850.00, 4900.00, 4950.00  # 31-40 (Nowe szczyty)
+    4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00, # 1-10: Spokojny wzrost
+    4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00, # 11-20: Hossa
+    4700.00, 4750.00, 4800.00, 4750.00, 4600.00, 4400.00, 4200.00, 4100.00, 4050.00, 4150.00, # 21-30: KRACH W ŚRODKU
+    4200.00, 4250.00, 4300.00, 4350.00, 4320.00, 4400.00, 4450.00, 4420.00, 4480.00, 4500.00  # 31-40: Odrabianie strat
 ]
+# Wynik końcowy A: ok. +12.5%
 
-# Indeks B (Nasdaq - Styl "Bańka i Krach")
+# Indeks B (Nasdaq): Szarpany, duże zyski (bańka), ale bolesny spadek NA KOŃCU (kara za chciwość).
 DATA_B = [
-    10500.00, 11000.00, 11800.00, 12500.00, 13500.00, 14200.00, 15000.00, 15500.00, 15200.00, 15800.00, # 1-10 (Euforia)
-    16000.00, 15500.00, 14800.00, 14000.00, 13000.00, 12500.00, 12000.00, 11500.00, 11200.00, 11000.00, # 11-20 (Pęknięcie bańki - krach)
-    10800.00, 11200.00, 11500.00, 12000.00, 12500.00, 12200.00, 12800.00, 13000.00, 12500.00, 13200.00, # 21-30 (Zmienność/Niepewność)
-    13500.00, 14000.00, 13800.00, 14200.00, 14500.00, 14000.00, 14800.00, 15000.00, 14500.00, 14800.00  # 31-40 (Boczne ruchy, nie odrobił szczytu)
+    11000.00, 11500.00, 11200.00, 11800.00, 12500.00, 12200.00, 12000.00, 12600.00, 13000.00, 12800.00, # 1-10: Zmienność
+    13200.00, 13500.00, 14000.00, 13800.00, 13500.00, 13200.00, 13000.00, 13400.00, 13800.00, 14200.00, # 11-20: Wzrosty
+    14500.00, 14200.00, 14000.00, 14400.00, 14800.00, 15200.00, 15500.00, 15800.00, 15500.00, 15200.00, # 21-30: Euforia (Bańka)
+    15000.00, 14800.00, 14500.00, 14200.00, 13800.00, 13000.00, 12500.00, 12200.00, 12400.00, 12300.00  # 31-40: SPADEK NA KOŃCU
 ]
+# Wynik końcowy B: ok. +11.8%
 
 # Etykiety tekstowe
 LABELS_TEXT = [
@@ -224,8 +224,8 @@ def show_game1_intro():
             <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
             <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
             <ul>
-                <li><b>Indeks A:</b> Rynek akcji (Stabilniejszy).</li>
-                <li><b>Indeks B:</b> Rynek technologiczny (Agresywny).</li>
+                <li><b>Indeks A:</b> Rynek akcji (Stabilniejszy, ale uważaj).</li>
+                <li><b>Indeks B:</b> Rynek technologiczny (Agresywny, zmienny).</li>
                 <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
             </ul>
             <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
