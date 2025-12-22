@@ -17,40 +17,49 @@ except ImportError:
 # --- KONFIGURACJA STRONY ---
 st.set_page_config(page_title="Badanie Decyzji", layout="centered")
 
-# --- STYLE CSS (Visual Upgrade) ---
+# --- STYLE CSS (High Finance Vibe) ---
 st.markdown("""
     <style>
     /* Przycisk */
     .stButton>button { width: 100%; height: 3em; font-weight: bold; }
     
-    /* Nowoczesny box z instrukcją */
+    /* Nowoczesny, "finansowy" box z instrukcją */
     .instruction-card {
-        background-color: #ffffff;
-        border-left: 5px solid #4CAF50;
+        background-color: #f8f9fa;
+        border-left: 6px solid #003366; /* Deep Navy Blue */
         padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         margin-bottom: 25px;
-        color: #333;
+        color: #2c3e50;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     .instruction-card h3 {
         margin-top: 0;
-        color: #2E7D32;
+        color: #003366; /* Deep Navy Blue */
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 1rem;
+        letter-spacing: 1px;
     }
     .instruction-card ul {
         padding-left: 20px;
+        line-height: 1.6;
+    }
+    .important-text {
+        color: #003366;
+        font-weight: 800;
+        font-size: 1.05em;
     }
     
-    /* Ukrycie domyślnego menu Streamlit */
+    /* Ukrycie menu */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # --- DANE GIEŁDOWE (HARDCODED) ---
-# Dane odwrócone chronologicznie (od Rundy 1: wrz 2022 do Rundy 40: gru 2025)
-
-# Indeks A (S&P 500)
+# S&P 500
 DATA_A = [
     3585.62, 3871.98, 4080.11, 3839.50, 4076.60, 3970.15, 4109.31, 4169.48, 4179.83, 4450.38, # 1-10
     4588.96, 4507.66, 4288.05, 4193.80, 4567.80, 4769.83, 4845.65, 5096.27, 5254.35, 5035.69, # 11-20
@@ -58,7 +67,7 @@ DATA_A = [
     5611.85, 5569.06, 5911.69, 6204.95, 6339.39, 6460.26, 6688.46, 6840.20, 6849.09, 6834.50  # 31-40
 ]
 
-# Indeks B (Nasdaq)
+# Nasdaq
 DATA_B = [
     10575.62, 10988.15, 11468.00, 10466.48, 11584.55, 11455.54, 12221.91, 12226.58, 12935.29, 13787.92, # 1-10
     14346.02, 14034.97, 13219.32, 12851.24, 14226.22, 15011.35, 15164.01, 16091.92, 16379.46, 15657.82, # 11-20
@@ -149,6 +158,14 @@ def save_to_google_sheets(data_dict):
             st.error(f"Błąd zapisu lokalnego: {e}")
             return False
 
+def pad_history(history_list, total_length):
+    """Pomocnicza funkcja do wykresu: uzupełnia listę wartościami None do pełnej długości"""
+    # Upewniamy się, że nie przekraczamy długości (na wypadek błędów)
+    base = history_list[:total_length]
+    # Dopełniamy None
+    padding = [None] * (total_length - len(base))
+    return base + padding
+
 # --- STRONY ---
 
 def show_intro():
@@ -180,7 +197,6 @@ def show_demographics():
 def show_game1_intro():
     st.header("Część 1: Gra Inwestycyjna")
     
-    # Grafika (emoji header)
     st.markdown("# 📈 📉 💰")
     
     st.markdown("""
@@ -188,73 +204,69 @@ def show_game1_intro():
         <h3>Instrukcja:</h3>
         Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
         <ul>
-            <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
+            [cite_start]<li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału[cite: 3].</li>
             <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
             <ul>
-                <li><b>Indeks A (S&P 500):</b> Rynek akcji USA (szeroki).</li>
-                <li><b>Indeks B (Nasdaq):</b> Spółki technologiczne (wyższa zmienność).</li>
-                <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
+                [cite_start]<li><b>Indeks A:</b> Rynek akcji (S&P 500)[cite: 5].</li>
+                [cite_start]<li><b>Indeks B:</b> Rynek technologiczny (Nasdaq)[cite: 6].</li>
+                [cite_start]<li><b>Gotówka:</b> Bezpieczna przystań (0% zysku)[cite: 7].</li>
             </ul>
-            <li>Twoim celem jest maksymalizacja zysku.</li>
-            <li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
+            <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
+            [cite_start]<li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>[cite: 11].</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
     
     # Inicjalizacja Gry 1
     if 'g1_round' not in st.session_state:
-        st.session_state.g1_round = 0 # Start index (0 = Round 1 data)
+        st.session_state.g1_round = 0 
         st.session_state.g1_capital = 10000.0
-        # Historia do wykresu (zaczynamy od startu)
+        # Historia do wykresu
         st.session_state.g1_history_user = [10000.0]
-        # Aby wykres był czytelny, znormalizujemy indeksy, żeby też startowały od 10k
+        # Normalizacja indeksów
         st.session_state.start_A = DATA_A[0]
         st.session_state.start_B = DATA_B[0]
         st.session_state.g1_history_A = [10000.0]
         st.session_state.g1_history_B = [10000.0]
-        st.session_state.g1_labels = [LABELS[0]]
 
     if st.button("Rozumiem, gramy!"):
         next_page('game1')
 
 def show_game1():
     current_idx = st.session_state.g1_round
+    total_len = len(LABELS) # 40
     
     # Jeśli koniec danych
     if current_idx >= 39: 
         next_page('game2_intro')
         return
 
-    # Obliczenie zmiany procentowej dla wyświetlenia
+    # Obliczenie zmiany procentowej
     current_cap = st.session_state.g1_history_user[-1]
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
     
     st.subheader(f"Runda {current_idx + 1} / 40 ({LABELS[current_idx]})")
     
-    # Metryki
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
     
-    # Przygotowanie danych do wykresu (kolorowa linia)
+    # --- FIX WYKRESU: PEŁNA OŚ ---
+    # Tworzymy DataFrame o stałej długości (40), uzupełniając brakujące dane None
+    
     chart_data = pd.DataFrame({
-        "Data": st.session_state.g1_labels,
-        "Twój Kapitał (🔴)": st.session_state.g1_history_user,
-        "S&P 500": st.session_state.g1_history_A,
-        "Nasdaq": st.session_state.g1_history_B
+        "Data": LABELS,
+        "S&P 500": pad_history(st.session_state.g1_history_A, total_len),
+        "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
+        "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     }).set_index("Data")
     
-    # Wykres z kolorami (czerwony dla gracza)
-    st.line_chart(chart_data, color=["#FF0000", "#AAAAAA", "#4444FF"]) 
-    # Uwaga: Kolejność kolorów zależy od sortowania kolumn, 
-    # w Streamlit color mapuje się alfabetycznie po kolumnach:
-    # 1. Nasdaq, 2. S&P 500, 3. Twój Kapitał.
-    # Żeby mieć pewność, w nowszym Streamlit można użyć color=["#4444FF", "#AAAAAA", "#FF0000"]
-    # (Nasdaq=Blue, SP500=Grey, User=Red).
+    # Rysowanie - Streamlit automatycznie pokaże całą oś X z LABELS
+    st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"]) 
     
     # Logika Lewaru
     leverage_active = False
-    if current_idx >= 20: # Od rundy 21 (index 20)
+    if current_idx >= 20: 
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
 
@@ -266,7 +278,6 @@ def show_game1():
     if col3.button("Gotówka"): choice = 'Cash'
 
     if choice:
-        # Pobieramy realną zmianę z następnego kroku
         next_idx = current_idx + 1
         
         price_A_prev = DATA_A[current_idx]
@@ -277,7 +288,6 @@ def show_game1():
         price_B_curr = DATA_B[next_idx]
         ret_B = (price_B_curr - price_B_prev) / price_B_prev
         
-        # Obliczamy wynik gracza
         user_ret = 0.0
         if choice == 'A': user_ret = ret_A
         elif choice == 'B': user_ret = ret_B
@@ -287,18 +297,14 @@ def show_game1():
             
         new_cap = current_cap * (1 + user_ret)
         
-        # Aktualizacja stanu
         st.session_state.g1_history_user.append(new_cap)
         st.session_state.g1_round += 1
         
-        # Aktualizacja historii indeksów (znormalizowanych) do wykresu
-        # Normalizacja: (Cena / Cena_Startowa) * 10000
         norm_A = (DATA_A[next_idx] / st.session_state.start_A) * 10000
         norm_B = (DATA_B[next_idx] / st.session_state.start_B) * 10000
         
         st.session_state.g1_history_A.append(norm_A)
         st.session_state.g1_history_B.append(norm_B)
-        st.session_state.g1_labels.append(LABELS[next_idx])
         
         # Zapis
         st.session_state.results['game1_history'].append({
@@ -318,12 +324,12 @@ def show_game2_intro():
     st.markdown("""
     <div class="instruction-card">
         <h3>Zasady:</h3>
-        1. Masz <b>100 PLN</b>.
-        2. Rzucasz wirtualną monetą (ok. 20 razy).
+        1. [cite_start]Masz <b>100 PLN</b>[cite: 40].
+        2. [cite_start]Rzucasz wirtualną monetą (ok. 20 razy)[cite: 42].
         3. Prawdopodobieństwa:
            <ul>
-               <li>🦅 <b>ORZEŁ (60% szans):</b> Wygrywasz tyle, ile postawiłeś.</li>
-               <li>📉 <b>RESZKA (40% szans):</b> Tracisz stawkę.</li>
+               [cite_start]<li>🦅 <b>ORZEŁ (60% szans):</b> Wygrywasz tyle, ile postawiłeś[cite: 44].</li>
+               [cite_start]<li>📉 <b>RESZKA (40% szans):</b> Tracisz stawkę[cite: 45].</li>
            </ul>
         4. Decydujesz, jaki % kapitału stawiasz w każdym rzucie.
     </div>
