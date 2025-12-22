@@ -297,13 +297,22 @@ def show_intro():
 
 def show_demographics():
     st.header("Metryczka")
+    st.write("Proszę uzupełnić podstawowe informacje o sobie.")
     with st.form("demo"):
-        age = st.selectbox("Wiek", ["18-24", "25-34", "35-44", "45-54", "55+"])
-        gender = st.radio("Płeć", ["Kobieta", "Mężczyzna", "Inna"])
+        # index=None sprawia, że nic nie jest zaznaczone
+        age = st.selectbox("Wiek", ["18-24", "25-34", "35-44", "45-54", "55+"], index=None, placeholder="Wybierz wiek...")
+        gender = st.radio("Płeć", ["Kobieta", "Mężczyzna", "Inna"], index=None)
         risk = st.slider("Skłonność do ryzyka (1-Niska, 7-Wysoka)", 1, 7, 4)
-        if st.form_submit_button("Dalej"):
-            st.session_state.results['demographics'] = {"age": age, "gender": gender, "risk_tolerance": risk}
-            next_page('game1_intro')
+        
+        submitted = st.form_submit_button("Dalej")
+        
+        if submitted:
+            # WALIDACJA: Sprawdzamy czy użytkownik coś wybrał
+            if age is None or gender is None:
+                st.error("⚠️ Proszę zaznaczyć Wiek oraz Płeć, aby kontynuować.")
+            else:
+                st.session_state.results['demographics'] = {"age": age, "gender": gender, "risk_tolerance": risk}
+                next_page('game1_intro')
 
 # --- GRA 1: GIEŁDA ---
 
@@ -535,7 +544,6 @@ def show_game2():
 def show_survey():
     st.header("Część 3: Scenariusze")
     
-    # Podział pytań: strona 1 (0-6), strona 2 (7-13)
     page_num = st.session_state.survey_page_num
     
     if page_num == 1:
@@ -548,24 +556,16 @@ def show_survey():
         btn_label = "Zakończ badanie"
 
     with st.form(f"survey_form_{page_num}"):
-        # Tymczasowy słownik na odpowiedzi z tej strony
-        # (ale zapisujemy go globalnie do session_state przy submicie)
         for q_data in current_questions:
             st.markdown(f"**{q_data['q']}**")
-            # Klucz musi być unikalny dla każdego pytania
-            # Jeśli user już odpowiedział (np. cofnął się - choć tu nie ma cofania),
-            # można by dać default, ale tu startujemy z pustym.
             val = st.radio("Wybierz opcję:", q_data['opts'], key=q_data['id'], index=None)
             st.markdown("---")
         
         submitted = st.form_submit_button(btn_label)
         
         if submitted:
-            # Sprawdzenie czy wszystkie na tej stronie są wypełnione
-            # Pobieramy odpowiedzi z session_state po kluczach
             missing = False
             current_answers = {}
-            
             for q in current_questions:
                 ans = st.session_state.get(q['id'])
                 if ans is None:
@@ -576,11 +576,11 @@ def show_survey():
             if missing:
                 st.warning("Proszę odpowiedzieć na wszystkie pytania na tej stronie.")
             else:
-                # Zapisujemy odpowiedzi do głównego słownika
                 st.session_state.results['survey_answers'].update(current_answers)
                 
                 if page_num == 1:
                     st.session_state.survey_page_num = 2
+                    # rerun() automatycznie przewija stronę na górę po przeładowaniu
                     st.rerun()
                 else:
                     next_page('finish')
