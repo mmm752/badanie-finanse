@@ -98,7 +98,10 @@ def save_to_google_sheets(data_dict):
             # Używamy sekretów Streamlit do autoryzacji
             credentials = Credentials.from_service_account_info(
                 st.secrets["gcp_service_account"],
-                scopes=["https://www.googleapis.com/auth/spreadsheets"],
+                scopes=[
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+],
             )
             gc = gspread.authorize(credentials)
             # Otwórz arkusz po kluczu lub nazwie
