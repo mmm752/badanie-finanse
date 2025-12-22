@@ -698,6 +698,14 @@ def show_game2_intro():
         next_page('game2')
 
 def show_game2():
+    # --- POPRAWKA: GUARD CLAUSE ---
+    # Sprawdzamy na samym początku, czy gra się skończyła.
+    # Jeśli runda > 40, natychmiast przekieruj do ankiety, nie rysuj interfejsu gry.
+    if st.session_state.g2_round > 40:
+        next_page('survey')
+        return
+    # ------------------------------
+
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 40")
     cap = st.session_state.g2_capital
     
@@ -755,6 +763,9 @@ def show_game2():
             })
             
             st.session_state.g2_round += 1
+            
+            # Tutaj logika pozostaje, ale dzięki 'return' na górze funkcji
+            # przy następnym odświeżeniu (st.rerun) gra już się nie wyświetli.
             if st.session_state.g2_round > 40:
                 time.sleep(1.5)
                 next_page('survey')
