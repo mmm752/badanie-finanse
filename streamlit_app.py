@@ -297,21 +297,75 @@ def show_intro():
 
 def show_demographics():
     st.header("Metryczka")
-    st.write("Proszę uzupełnić podstawowe informacje o sobie.")
+    st.markdown("Proszę uzupełnić podstawowe informacje. **Wszystkie pola są wymagane.**")
+    
     with st.form("demo"):
-        # index=None sprawia, że nic nie jest zaznaczone
-        age = st.selectbox("Wiek", ["18-24", "25-34", "35-44", "45-54", "55+"], index=None, placeholder="Wybierz wiek...")
-        gender = st.radio("Płeć", ["Kobieta", "Mężczyzna", "Inna"], index=None)
-        risk = st.slider("Skłonność do ryzyka (1-Niska, 7-Wysoka)", 1, 7, 4)
+        # Pytanie 1: Wiek
+        age = st.selectbox(
+            "1. Ile masz lat?", 
+            ["poniżej 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65 lub więcej"], 
+            index=None, 
+            placeholder="Wybierz..."
+        )
+        
+        # Pytanie 2: Płeć
+        gender = st.radio(
+            "2. Jakiej jesteś płci?", 
+            ["Kobieta", "Mężczyzna", "Inna / nie chcę podawać"], 
+            index=None
+        )
+        
+        # Pytanie 3: Wykształcenie
+        edu = st.selectbox(
+            "3. Najwyższy ukończony poziom wykształcenia:", 
+            ["Podstawowe", "Średnie", "Licencjat / inżynier", "Magister", "Doktorat lub wyżej"], 
+            index=None,
+            placeholder="Wybierz..."
+        )
+        
+        # Pytanie 4: Dziedzina
+        field = st.radio(
+            "4. Czy Twoje wykształcenie lub praca są związane z finansami, ekonomią lub rynkami kapitałowymi?", 
+            ["Tak", "Częściowo", "Nie"], 
+            index=None
+        )
+        
+        # Pytanie 5: Doświadczenie inwestycyjne
+        inv_exp = st.selectbox(
+            "5. Jak oceniasz swoje doświadczenie w inwestowaniu?", 
+            ["Brak doświadczenia", "Początkujące", "Średnie", "Zaawansowane", "Profesjonalne"], 
+            index=None,
+            placeholder="Wybierz..."
+        )
+        
+        # Pytanie 6: Doświadczenie realne
+        real_inv = st.radio(
+            "6. Czy kiedykolwiek inwestowałeś/-aś realne pieniądze (np. akcje, ETF-y, kryptowaluty)?", 
+            ["Tak", "Nie"], 
+            index=None
+        )
+        
+        # Pytanie 7: Ryzyko
+        st.write("7. Jak oceniasz swoją skłonność do podejmowania ryzyka finansowego? (1-bardzo niska, 7-bardzo wysoka)")
+        risk = st.slider("", 1, 7, 4)
         
         submitted = st.form_submit_button("Dalej")
         
         if submitted:
-            # WALIDACJA: Sprawdzamy czy użytkownik coś wybrał
-            if age is None or gender is None:
-                st.error("⚠️ Proszę zaznaczyć Wiek oraz Płeć, aby kontynuować.")
+            # WALIDACJA: Czy wszystko (poza suwakiem) jest wypełnione?
+            required_fields = [age, gender, edu, field, inv_exp, real_inv]
+            if any(f is None for f in required_fields):
+                st.error("⚠️ Proszę odpowiedzieć na wszystkie pytania przed przejściem dalej.")
             else:
-                st.session_state.results['demographics'] = {"age": age, "gender": gender, "risk_tolerance": risk}
+                st.session_state.results['demographics'] = {
+                    "age": age, 
+                    "gender": gender, 
+                    "education": edu,
+                    "finance_related": field,
+                    "inv_experience": inv_exp,
+                    "real_investing": real_inv,
+                    "risk_tolerance": risk
+                }
                 next_page('game1_intro')
 
 # --- GRA 1: GIEŁDA ---
@@ -580,7 +634,6 @@ def show_survey():
                 
                 if page_num == 1:
                     st.session_state.survey_page_num = 2
-                    # rerun() automatycznie przewija stronę na górę po przeładowaniu
                     st.rerun()
                 else:
                     next_page('finish')
