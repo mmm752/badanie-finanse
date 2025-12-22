@@ -383,8 +383,8 @@ def show_game1_intro():
             <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
             <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
             <ul>
-                <li><b>Indeks A:</b> Rynek akcji (Stabilniejszy, ale uważaj).</li>
-                <li><b>Indeks B:</b> Rynek technologiczny (Agresywny, zmienny).</li>
+                <li><b>Indeks A:</b> S&P 500 </li>
+                <li><b>Indeks B:</b> Nasdaq</li>
                 <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
             </ul>
             <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
