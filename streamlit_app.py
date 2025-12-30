@@ -63,6 +63,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- DANE GIEŁDOWE (WERSJA TRUDNA) ---
+# Dane mamy na 40 okresów, ale wykorzystamy tylko 30 zgodnie z życzeniem
 DATA_A = [
     4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00,
     4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00,
@@ -468,8 +469,8 @@ def show_intro():
     Twój identyfikator: **{st.session_state.user_id}**.
     
     Badanie zajmie ok. 10 minut i składa się z 3 części:
-    1. Gra Giełdowa (40 rund).
-    2. Rzuty Monetą (zarządzanie stawką).
+    1. Gra Giełdowa (30 rund).
+    2. Rzuty Monetą (zarządzanie stawką - 30 rund).
     3. Krótka Ankieta.
     """)
     if st.button("Rozpocznij badanie"):
@@ -554,11 +555,10 @@ def show_game1_intro():
     st.header("Część 1: Gra Inwestycyjna")
     st.markdown("# 📈 📉 💰")
     
-    # POPRAWIONE FORMATOWANIE HTML (BEZ WCIĘĆ)
     st.markdown("""
 <div class="instruction-card">
     <h3>Instrukcja:</h3>
-    Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
+    Wcielasz się w rolę inwestora. Masz przed sobą <b>30 rund</b> (reprezentujących 30 miesięcy).
     <ul>
         <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
         <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
@@ -568,7 +568,7 @@ def show_game1_intro():
             <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
         </ul>
         <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
-        <li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
+        <li>Od 15. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
     </ul>
 </div>
     """, unsafe_allow_html=True)
@@ -587,9 +587,10 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    total_len = 40
+    # ZMIANA: Skrócenie gry do 30 rund
+    total_len = 30
     
-    if current_idx >= 39:
+    if current_idx >= 29: # Koniec po 30 rundach (indeksy 0-29)
         next_page('game2_intro')
         return
 
@@ -597,7 +598,7 @@ def show_game1():
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
     
-    st.subheader(f"Runda {current_idx + 1} / 40 ({LABELS_TEXT[current_idx]})")
+    st.subheader(f"Runda {current_idx + 1} / {total_len} ({LABELS_TEXT[current_idx]})")
     
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
@@ -607,11 +608,13 @@ def show_game1():
         "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
-    chart_data.index = REAL_DATES
-    st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"])
+    
+    # Wykres wyświetlamy z odpowiednią osią X (do 30 okresów)
+    st.line_chart(chart_data.iloc[:total_len], color=["#AAAAAA", "#4444FF", "#FF0000"])
     
     leverage_active = False
-    if current_idx >= 20:
+    # ZMIANA: Lewar dostępny od 15 rundy (połowa)
+    if current_idx >= 15:
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
 
@@ -662,14 +665,48 @@ def show_game1():
 
 # --- GRA 2: MONETA ---
 
+def show_game2_intro():
+    st.header("Część 2: Zakład o rzut monetą")
+    
+    st.markdown("""
+<div class="instruction-card">
+    <h3>Zasady:</h3>
+    <ul>
+        <li>💰 <b>Start:</b> Otrzymujesz na start <b>100 PLN</b>.</li>
+        <li>🎲 <b>Długość:</b> Czeka Cię <b>30 rzutów</b> wirtualną monetą.</li>
+        <li>📊 <b>Prawdopodobieństwa (stałe):</b>
+            <ul>
+                <li>🦅 <b>ORZEŁ:</b> 60% szans (Wygrana)</li>
+                <li>📉 <b>RESZKA:</b> 40% szans (Wygrana)</li>
+            </ul>
+        </li>
+        <li>⚙️ <b>Twoja decyzja w każdej rundzie:</b>
+            <ul>
+                <li>Na co stawiasz (Orzeł czy Reszka).</li>
+                <li>Jaki % kapitału stawiasz (suwakiem).</li>
+            </ul>
+        </li>
+    </ul>
+</div>
+    """, unsafe_allow_html=True)
+    
+    if 'g2_round' not in st.session_state:
+        st.session_state.g2_round = 1
+        st.session_state.g2_capital = 100.0
+        st.session_state.g2_history_chart = [100.0]
+        st.session_state.g2_table_data = []
+
+    if st.button("Start gry z monetą"):
+        next_page('game2')
+
 def show_game2():
     # --- GUARD CLAUSE ---
-    # Jeśli runda > 40, przekieruj do ankiety
-    if st.session_state.g2_round > 40:
+    # Jeśli runda > 30, przekieruj do ankiety
+    if st.session_state.g2_round > 30:
         next_page('survey')
         return
 
-    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 40")
+    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
     cap = st.session_state.g2_capital
     
     # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
@@ -758,7 +795,7 @@ def show_game2():
             st.session_state.g2_round += 1
             
             # Obsługa końca gry i przeładowania
-            if st.session_state.g2_round > 40:
+            if st.session_state.g2_round > 30:
                 time.sleep(1.5)
                 next_page('survey')
             else:
@@ -778,6 +815,51 @@ def show_game2():
                 use_container_width=True,
                 hide_index=True
             )
+
+# --- ANKIETA (PODZIELONA NA 2 STRONY) ---
+
+def show_survey():
+    st.header("Część 3: Scenariusze")
+    
+    page_num = st.session_state.survey_page_num
+    
+    if page_num == 1:
+        st.progress(50)
+        current_questions = FIXED_QUESTIONS[:7]
+        btn_label = "Dalej (Strona 2/2)"
+    else:
+        st.progress(100)
+        current_questions = FIXED_QUESTIONS[7:]
+        btn_label = "Zakończ badanie"
+
+    with st.form(f"survey_form_{page_num}"):
+        for q_data in current_questions:
+            st.markdown(f"**{q_data['q']}**")
+            val = st.radio("Wybierz opcję:", q_data['opts'], key=q_data['id'], index=None)
+            st.markdown("---")
+        
+        submitted = st.form_submit_button(btn_label)
+        
+        if submitted:
+            missing = False
+            current_answers = {}
+            for q in current_questions:
+                ans = st.session_state.get(q['id'])
+                if ans is None:
+                    missing = True
+                else:
+                    current_answers[q['id']] = ans
+            
+            if missing:
+                st.warning("Proszę odpowiedzieć na wszystkie pytania na tej stronie.")
+            else:
+                st.session_state.results['survey_answers'].update(current_answers)
+                
+                if page_num == 1:
+                    st.session_state.survey_page_num = 2
+                    st.rerun()
+                else:
+                    next_page('finish')
 
 # --- ROUTER ---
 if st.session_state.page == 'intro': show_intro()
