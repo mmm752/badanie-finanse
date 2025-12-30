@@ -182,22 +182,24 @@ def next_page(page_name):
     st.rerun()
 
 def scroll_to_top():
-    # POPRAWKA: Dodanie losowego klucza (key) oraz setTimeout wymusza 
-    # ponowne wykonanie skryptu przy każdym odświeżeniu strony.
-    js = """
+    # Generujemy losowy ID, aby treść HTML była unikalna za każdym razem.
+    # To zmusi Streamlit do przeładowania ramki bez użycia parametru 'key'.
+    unique_id = str(uuid.uuid4())
+    
+    js = f"""
     <script>
-        setTimeout(function() {
+        // Unique ID: {unique_id}
+        setTimeout(function() {{
             var body = window.parent.document.querySelector(".main");
             var appView = window.parent.document.querySelector(".stApp");
-            if (body) { body.scrollTop = 0; }
-            if (appView) { appView.scrollTop = 0; }
+            if (body) {{ body.scrollTop = 0; }}
+            if (appView) {{ appView.scrollTop = 0; }}
             window.scrollTo(0, 0);
-        }, 50);
+        }}, 50);
     </script>
     """
-    # Key=uuid sprawia, że komponent jest unikalny przy każdym wywołaniu,
-    # co zapobiega cache'owaniu przez Streamlit i wymusza wykonanie JS.
-    components.html(js, height=0, key=str(uuid.uuid4()))
+    # Usunięto parametr key=..., który powodował błąd w starszych wersjach
+    components.html(js, height=0)
 
 # --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE + HEADERy) ---
 
