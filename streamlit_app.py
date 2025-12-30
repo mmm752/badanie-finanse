@@ -486,7 +486,7 @@ def show_intro():
     Twój identyfikator: **{st.session_state.user_id}**.
     
     Badanie zajmie ok. 10 minut i składa się z 3 części:
-    1. Gra Giełdowa (30 rund).
+    1. Gra Giełdowa (40 rund).
     2. Rzuty Monetą (zarządzanie stawką - 30 rund).
     3. Krótka Ankieta.
     """)
@@ -608,9 +608,9 @@ def show_game1():
     # ZMIANA: Wydłużenie gry do 40 rund
     total_len = 40
     
-    # ZMIANA: Koniec gry następuje, gdy osiągniemy ostatni indeks (39)
+    # ZMIANA: Gdy gra się kończy, idziemy do PODSUMOWANIA (game1_summary) zamiast od razu do game2
     if current_idx >= 39: 
-        next_page('game2_intro')
+        next_page('game1_summary')
         return
 
     current_cap = st.session_state.g1_history_user[-1]
@@ -682,6 +682,51 @@ def show_game1():
             "capital": new_cap
         })
         st.rerun()
+
+# --- NOWE: PODSUMOWANIE GRY 1 ---
+def show_game1_summary():
+    st.header("Podsumowanie Gry Giełdowej")
+    st.markdown("Gratulacje, ukończyłeś pierwszą część badania! Oto Twoje wyniki na tle rynku.")
+
+    # Obliczenia wyników
+    start_cap = 10000.0
+    end_cap = st.session_state.g1_history_user[-1]
+    user_ret_pct = ((end_cap - start_cap) / start_cap) * 100
+
+    # Obliczenia dla indeksów (cały okres badania)
+    # DATA_A/B mają 40 elementów, indeksy 0-39
+    start_A_val = DATA_A[0]
+    end_A_val = DATA_A[-1]
+    idx_a_ret_pct = ((end_A_val - start_A_val) / start_A_val) * 100
+    idx_a_cap = 10000.0 * (end_A_val / start_A_val)
+
+    start_B_val = DATA_B[0]
+    end_B_val = DATA_B[-1]
+    idx_b_ret_pct = ((end_B_val - start_B_val) / start_B_val) * 100
+    idx_b_cap = 10000.0 * (end_B_val / start_B_val)
+
+    # Wyświetlanie metryk w kolumnach
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Twój Wynik", f"{end_cap:.2f} PLN", f"{user_ret_pct:.2f}%")
+    c2.metric("S&P 500 (Pasywnie)", f"{idx_a_cap:.2f} PLN", f"{idx_a_ret_pct:.2f}%")
+    c3.metric("Nasdaq (Pasywnie)", f"{idx_b_cap:.2f} PLN", f"{idx_b_ret_pct:.2f}%")
+
+    st.markdown("---")
+    st.write("**Wykres porównawczy:**")
+    
+    # Wykres całej historii
+    chart_data = pd.DataFrame({
+        "S&P 500": pad_history(st.session_state.g1_history_A, 40),
+        "Nasdaq": pad_history(st.session_state.g1_history_B, 40),
+        "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, 40)
+    })
+    st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"])
+
+    st.markdown("Gdy będziesz gotowy, przejdź do drugiej części badania.")
+    
+    if st.button("Dalej: Część 2 (Moneta)"):
+        next_page('game2_intro')
+
 # --- GRA 2: MONETA ---
 
 def show_game2_intro():
@@ -957,6 +1002,7 @@ if st.session_state.page == 'intro': show_intro()
 elif st.session_state.page == 'demographics': show_demographics()
 elif st.session_state.page == 'game1_intro': show_game1_intro()
 elif st.session_state.page == 'game1': show_game1()
+elif st.session_state.page == 'game1_summary': show_game1_summary() # NOWY ROUTING
 elif st.session_state.page == 'game2_intro': show_game2_intro()
 elif st.session_state.page == 'game2_questions': show_game2_questions()
 elif st.session_state.page == 'game2': show_game2()
