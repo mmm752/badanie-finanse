@@ -56,6 +56,16 @@ st.markdown("""
         text-decoration: underline;
     }
     
+    /* Legenda skali Likerta */
+    .likert-legend {
+        background-color: #e3f2fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+        border: 1px solid #90caf9;
+    }
+    
     /* Ukrycie menu */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -112,119 +122,55 @@ if 'results' not in st.session_state:
 if 'survey_page_num' not in st.session_state:
     st.session_state.survey_page_num = 1
 
-# --- PYTANIA ANKIETOWE (STAŁA KOLEJNOŚĆ) ---
+# --- NOWE PYTANIA ANKIETOWE (SKALA 1-5) ---
 FIXED_QUESTIONS = [
     {
-        "id": "Q01_Overconfidence",
-        "q": "Pytanie 1: Pracujesz w branży IT i budujesz portfel emerytalny na 30 lat. Twoja wiedza o technologii jest bardzo szeroka.",
-        "opts": [
-            "A: Inwestujesz 80% środków w spółki technologiczne, bo na tym się znasz i potrafisz ocenić ich produkty lepiej niż przeciętny inwestor.",
-            "B: Dywersyfikujesz portfel o sektory, których nie znasz (banki, surowce), mimo że czujesz się w nich mniej pewnie."
-        ]
+        "id": "Q01_HomeBias_Competence",
+        "q": "1. \"Inwestowanie w sektory, które doskonale rozumiem dzięki mojej pracy zawodowej (np. lekarz inwestujący w spółki z branży medycznej), pozwala mi zminimalizować ryzyko pomyłki lepiej niż dywersyfikacja.\""
     },
     {
-        "id": "Q02_LossAversion_Loss",
-        "q": "Pytanie 2: Kupiłeś akcje po 100 PLN, obecnie kosztują 70 PLN (-30%). Fundamenty branży pogarszają się przez nowe regulacje, a spółka tnie dywidendy.",
-        "opts": [
-            "A: Natychmiast zamykasz pozycję, by przenieść pozostały kapitał tam, gdzie ma on większy potencjał wzrostu.",
-            "B: Trzymasz akcje. Czekasz na korektę wzrostową, by sprzedać je chociaż po 90 PLN i zminimalizować odczuwaną stratę."
-        ]
+        "id": "Q02_Disposition_Gain",
+        "q": "2. \"Dla bezpieczeństwa portfela ważniejsze jest dla mnie regularne realizowanie zysków, gdy akcje wzrosną, niż trzymanie ich w nadziei na dalsze, niepewne rekordy.\""
     },
     {
-        "id": "Q03_Recency",
-        "q": "Pytanie 3: Masz do wyboru dwa fundusze akcyjne o identycznych opłatach:",
-        "opts": [
-            "A: Fundusz \"Lider Wzrostu\" – właśnie otrzymał nagrodę \"Fundusz Roku\", a w ostatnim kwartale zarobił spektakularne 15%.",
-            "B: Fundusz \"Systematyczny\" – od 10 lat dowozi stabilne 7-8%, ale w tym roku nikt o nim nie pisze w mediach."
-        ]
+        "id": "Q03_Disposition_Loss",
+        "q": "3. \"Jeśli jestem przekonany o wartości spółki, a jej kurs spada poniżej ceny, za którą ją kupiłem, zazwyczaj czekam ze sprzedażą, aż cena wróci do poziomu wyjściowego, by nie tracić kapitału.\""
     },
     {
-        "id": "Q04_Framing_Gain",
-        "q": "Pytanie 4: Otrzymałeś spadek 100 000 PLN. Masz dwie opcje:",
-        "opts": [
-            "A: Bezpieczna obligacja, która gwarantuje Ci pewne 30 000 PLN zysku ponad inflację.",
-            "B: Ryzykowny fundusz, w którym masz 30% szans na zysk 100 000 PLN i 70% szans na brak zysku."
-        ]
+        "id": "Q04_OutcomeBias",
+        "q": "4. \"Skuteczność doradcy lub zarządzającego funduszem najlepiej oceniać po jego wyniku z ostatniego roku – liczby są najbardziej obiektywnym dowodem umiejętności.\""
     },
     {
-        "id": "Q05_LossAversion_Gain",
-        "q": "Pytanie 5: Kupiłeś akcje po 50 PLN, dziś kosztują 80 PLN (+60%). Analiza fundamentalna sugeruje, że są warte 100 PLN, ale czujesz niepokój, że rynek może spaść.",
-        "opts": [
-            "A: Sprzedajesz teraz, aby \"zaksięgować zysk\" i nie pozwolić mu uciec.",
-            "B: Trzymasz pozycję zgodnie z analizą, pozwalając zyskom rosnąć do wyznaczonego celu."
-        ]
+        "id": "Q05_Recency_Trend",
+        "q": "5. \"Szukając funduszu inwestycyjnego, najbezpieczniej jest wybierać te, które w ostatnich 12-24 miesiącach radziły sobie lepiej niż średnia rynkowa.\""
     },
     {
         "id": "Q06_Confirmation",
-        "q": "Pytanie 6: Spółka, którą lubisz, publikuje raport. Zysk jest dobry, ale zadłużenie niebezpiecznie wzrosło.",
-        "opts": [
-            "A: Skupiasz się na zyskach (\"Wiedziałem, że to dobra firma!\") i uznajesz dług za niezbędny koszt rozwoju.",
-            "B: Analizujesz strukturę długu, dopuszczając myśl, że Twoja dotychczasowa pozytywna opinia o spółce może wymagać rewizji."
-        ]
+        "q": "6. \"Gdy posiadam akcje spółki, którą dokładnie przeanalizowałem, traktuję większość negatywnych newsów jako szum informacyjny, który nie powinien wpływać na moją długoterminową wizję.\""
     },
     {
-        "id": "Q07_Framing_Loss",
-        "q": "Pytanie 7: Otrzymałeś wezwanie do zapłaty 100 000 PLN podatku. Możesz wybrać:",
-        "opts": [
-            "A: Godzisz się na ugodę i płacisz na pewno 70 000 PLN.",
-            "B: Idziesz do sądu: masz 30% szans, że nie zapłacisz nic, i 70% szans, że zapłacisz pełne 100 000 PLN."
-        ]
+        "id": "Q07_Hindsight",
+        "q": "7. \"Analizując historię krachów giełdowych, uważam, że większość z nich była poprzedzona logicznymi sygnałami ekonomicznymi, które były możliwe do zauważenia przed faktem.\""
     },
     {
-        "id": "Q08_Anchoring",
-        "q": "Pytanie 8: Kupiłeś akcje po 200 PLN, spadły do 150 PLN. Dziś nagle odbiły do 198 PLN.",
-        "opts": [
-            "A: Sprzedajesz natychmiast, czując ulgę, że prawie nic nie straciłeś.",
-            "B: Oceniasz spółkę po obecnej cenie (198 PLN), ignorując fakt, że kiedyś płaciłeś za nią 200 PLN."
-        ]
+        "id": "Q08_SafetyFirst",
+        "q": "8. \"Mając do wyboru dwie inwestycje o podobnej średniej stopie zwrotu, zazwyczaj wybieram tę, która oferuje niższy maksymalny zysk, ale daje gwarancję ochrony wpłaconego kapitału.\""
     },
     {
-        "id": "Q09_Hindsight",
-        "q": "Pytanie 9: Patrzysz na wykres historyczny wielkiego krachu finansowego. Co myślisz?",
-        "opts": [
-            "A: \"To było oczywiste – wyceny były absurdalne, wskaźniki świeciły na czerwono, każdy mógł to przewidzieć\".",
-            "B: \"Sytuacja wtedy była bardzo niejasna, a głosy o krachu mieszały się z bardzo silnymi argumentami za dalszymi wzrostami\"."
-        ]
+        "id": "Q09_Authority",
+        "q": "9. \"W skomplikowanym świecie finansów racjonalne jest oparcie swoich decyzji na rekomendacjach znanych autorytetów giełdowych, którzy mają szerszy dostęp do danych.\""
     },
     {
-        "id": "Q10_Availability_Fear",
-        "q": "Pytanie 10: Widzisz w mediach materiał o katastrofie budowlanej w Azji. Masz akcje solidnej firmy budowlanej z Europy, które lekko spadają przez ogólny sentyment.",
-        "opts": [
-            "A: Rozważasz sprzedaż, bo obraz katastrofy wywołuje w Tobie silny lęk przed ryzykiem w tej branży.",
-            "B: Ignorujesz newsa jako nieistotny dla fundamentów Twojej europejskiej firmy."
-        ]
+        "id": "Q10_Herding",
+        "q": "10. \"Jeśli znaczna część rynku i mediów finansowych zwraca się ku nowej klasie aktywów (np. AI, surowce), zazwyczaj oznacza to trwały trend, którego nie warto ignorować.\""
     },
     {
-        "id": "Q11_Confirmation_Search",
-        "q": "Pytanie 11: Chcesz kupić Bitcoina. Jakich informacji szukasz w internecie?",
-        "opts": [
-            "A: Wpisujesz: \"Prognozy wzrostu Bitcoina 2025\" lub \"Dlaczego krypto to przyszłość\".",
-            "B: Wpisujesz: \"Największe zagrożenia dla Bitcoina\" lub \"Dlaczego Bitcoin może spaść\"."
-        ]
+        "id": "Q11_MentalAccounting",
+        "q": "11. \"Uważam, że środki otrzymane niespodziewanie (np. wysoka premia, nagroda) można zainwestować w aktywa o wyższym profilu ryzyka niż te, w które inwestuję moje comiesięczne oszczędności.\""
     },
     {
-        "id": "Q12_OutcomeBias",
-        "q": "Pytanie 12: Fundusz \"Alpha\" zarobił 40% w rok (rynek 5%). Wynik to efekt jednej, ekstremalnie ryzykownej transakcji (wszystko na jedną kartę). Zarządzający twierdzi, że \"miał nosa\".",
-        "opts": [
-            "A: Inwestujesz tam. Wynik 40% to namacalny dowód na skuteczność tego człowieka.",
-            "B: Rezygnujesz. Uważasz, że wynik to efekt szczęścia, a proces decyzyjny jest zbyt ryzykowny."
-        ]
-    },
-    {
-        "id": "Q13_Confirmation_Auth",
-        "q": "Pytanie 13: Twój ulubiony analityk mówi \"Kupuj X\". Inny, nieznany Ci analityk, publikuje raport \"Sprzedaj X\", wytykając błędy w księgowości firmy.",
-        "opts": [
-            "A: Ignorujesz raport \"Sprzedaj\", bo ten drugi analityk pewnie chce manipulować kursem lub się myli.",
-            "B: Czytasz raport \"Sprzedaj\" z dużą uwagą, szukając dziur w argumentacji swojego ulubionego analityka."
-        ]
-    },
-    {
-        "id": "Q14_Hindsight_Bubble",
-        "q": "Pytanie 14: Pamiętasz okres szalonych wzrostów na spółkach technologicznych przed ich spadkiem. Jak oceniasz swoje ówczesne nastawienie?",
-        "opts": [
-            "A: \"Od początku czułem, że to bańka i tylko czekałem na krach, to było logiczne\".",
-            "B: \"W tamtym czasie czułem dużą niepewność i przyznaję, że argumenty za wzrostami też wydawały mi się wtedy sensowne\"."
-        ]
+        "id": "Q12_HomeBias_Geo",
+        "q": "12. \"Czuję się bardziej komfortowo, inwestując w spółki z mojego kraju, ponieważ łatwiej jest mi monitorować ich działalność i otoczenie prawne.\""
     }
 ]
 
@@ -244,7 +190,8 @@ def save_data_multi_sheet(data_package):
     """
     
     # --- DEFINICJA NAZW KOLUMN (NAGŁÓWKI) ---
-    q_headers = [f"Pytanie_{i+1:02d}" for i in range(14)]
+    # ZMIANA: Mamy teraz 12 pytań Likerta
+    q_headers = [f"Pytanie_{i+1:02d}" for i in range(12)]
     
     HEADERS_MAIN = [
         "User_ID", "Data_Badania", 
@@ -283,13 +230,11 @@ def save_data_multi_sheet(data_package):
 
     # --- ZAPIS DO GOOGLE SHEETS (ZABEZPIECZONY) ---
     try:
-        # Sprawdzamy czy biblioteka jest i czy secrets są dostępne w bezpieczny sposób
         can_use_gsheets = False
         try:
              if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
                  can_use_gsheets = True
         except Exception:
-             # Jeśli st.secrets rzuci błąd (brak pliku), ignorujemy to
              pass
 
         if can_use_gsheets:
@@ -329,7 +274,6 @@ def save_data_multi_sheet(data_package):
             df = pd.DataFrame(rows, columns=HEADERS_MAP[key])
             filename = f"wyniki_{key}_{timestamp_str}.csv"
             
-            # Zawsze zapisujemy z nagłówkiem
             df.to_csv(filename, index=False, header=True, encoding='utf-8-sig')
             
         return True
@@ -349,18 +293,19 @@ def show_finish():
 
     # --- 1. PRZYGOTOWANIE ARKUSZA GŁÓWNEGO (UCZESTNICY + ANKIETA) ---
     survey_flat = []
+    # Sortowanie po ID pytania (Q01, Q02...), aby kolumny się zgadzały
     sorted_q_ids = sorted(st.session_state.results['survey_answers'].keys())
+    
     for q_id in sorted_q_ids:
         raw_ans = st.session_state.results['survey_answers'][q_id]
-        ans_letter = raw_ans.split(":")[0] if ":" in raw_ans else raw_ans
-        survey_flat.append(ans_letter)
+        # ZMIANA: raw_ans to teraz liczba (int) ze suwaka, nie trzeba splitować
+        survey_flat.append(raw_ans)
 
     main_row = [
         uid, ts,
         demo.get('age'), demo.get('gender'), demo.get('education'), 
         demo.get('finance_related'), demo.get('inv_experience'), 
         demo.get('real_investing'), demo.get('risk_tolerance'),
-        # Dodanie nowych pól do zapisu:
         pre_g2.get('return_expect'), pre_g2.get('loss_prob'), pre_g2.get('ruin_prob'),
         st.session_state.g1_history_user[-1], # Wynik G1
         st.session_state.g2_capital           # Wynik G2
@@ -545,13 +490,12 @@ def show_demographics():
         
         # Pytanie 7: Ryzyko
         st.write("7. Jak oceniasz swoją skłonność do podejmowania ryzyka finansowego? (1-bardzo niska, 7-bardzo wysoka)")
-        # POPRAWKA: Dodano label i ukryto go (label_visibility="collapsed")
         risk = st.slider("Poziom ryzyka", 1, 7, 4, label_visibility="collapsed")
         
         submitted = st.form_submit_button("Dalej")
         
         if submitted:
-            # WALIDACJA: Czy wszystko (poza suwakiem) jest wypełnione?
+            # WALIDACJA
             required_fields = [age, gender, edu, field, inv_exp, real_inv]
             if any(f is None for f in required_fields):
                 st.error("⚠️ Proszę odpowiedzieć na wszystkie pytania przed przejściem dalej.")
@@ -605,10 +549,8 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    # ZMIANA: Wydłużenie gry do 40 rund
     total_len = 40
     
-    # ZMIANA: Gdy gra się kończy, idziemy do PODSUMOWANIA (game1_summary) zamiast od razu do game2
     if current_idx >= 39: 
         next_page('game1_summary')
         return
@@ -628,11 +570,9 @@ def show_game1():
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
     
-    # Wykres wyświetlamy dla całej długości (40)
     st.line_chart(chart_data.iloc[:total_len], color=["#AAAAAA", "#4444FF", "#FF0000"])
     
     leverage_active = False
-    # ZMIANA: Lewar dostępny od 20 rundy (połowa z 40)
     if current_idx >= 20:
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
@@ -647,7 +587,6 @@ def show_game1():
     if choice:
         next_idx = current_idx + 1
         
-        # Pobieramy dane dla kolejnego miesiąca
         price_A_prev = DATA_A[current_idx]
         price_A_curr = DATA_A[next_idx]
         ret_A = (price_A_curr - price_A_prev) / price_A_prev
@@ -683,18 +622,14 @@ def show_game1():
         })
         st.rerun()
 
-# --- NOWE: PODSUMOWANIE GRY 1 ---
 def show_game1_summary():
     st.header("Podsumowanie Gry Giełdowej")
     st.markdown("Gratulacje, ukończyłeś pierwszą część badania! Oto Twoje wyniki na tle rynku.")
 
-    # Obliczenia wyników
     start_cap = 10000.0
     end_cap = st.session_state.g1_history_user[-1]
     user_ret_pct = ((end_cap - start_cap) / start_cap) * 100
 
-    # Obliczenia dla indeksów (cały okres badania)
-    # DATA_A/B mają 40 elementów, indeksy 0-39
     start_A_val = DATA_A[0]
     end_A_val = DATA_A[-1]
     idx_a_ret_pct = ((end_A_val - start_A_val) / start_A_val) * 100
@@ -705,7 +640,6 @@ def show_game1_summary():
     idx_b_ret_pct = ((end_B_val - start_B_val) / start_B_val) * 100
     idx_b_cap = 10000.0 * (end_B_val / start_B_val)
 
-    # Wyświetlanie metryk w kolumnach
     c1, c2, c3 = st.columns(3)
     c1.metric("Twój Wynik", f"{end_cap:.2f} PLN", f"{user_ret_pct:.2f}%")
     c2.metric("S&P 500 (Pasywnie)", f"{idx_a_cap:.2f} PLN", f"{idx_a_ret_pct:.2f}%")
@@ -714,7 +648,6 @@ def show_game1_summary():
     st.markdown("---")
     st.write("**Wykres porównawczy:**")
     
-    # Wykres całej historii
     chart_data = pd.DataFrame({
         "S&P 500": pad_history(st.session_state.g1_history_A, 40),
         "Nasdaq": pad_history(st.session_state.g1_history_B, 40),
@@ -761,18 +694,15 @@ def show_game2_intro():
         st.session_state.g2_table_data = []
 
     if st.button("Start gry z monetą"):
-        # ZMIANA: PRZEKIEROWANIE DO NOWEJ STRONY Z PYTANIAMI
         next_page('game2_questions')
 
-# --- NOWA STRONA: PYTANIA PRZED GRĄ 2 ---
 def show_game2_questions():
     st.header("Twoje przewidywania")
     st.markdown("Zanim zaczniesz grę, odpowiedz proszę na 3 pytania dotyczące Twoich oczekiwań.")
 
     with st.form("pre_game2_survey"):
         
-        # Pytanie 1
-        st.markdown("**Pytanie 1 — oczekiwana stopa zwrotu (overconfidence, neglect of compounding)**")
+        st.markdown("**Pytanie 1 — oczekiwana stopa zwrotu**")
         st.markdown("Jakiej łącznej stopy zwrotu spodziewasz się po 30 rundach?")
         q1 = st.radio(
             "Wybierz jedną opcję:",
@@ -788,8 +718,7 @@ def show_game2_questions():
         )
         st.markdown("---")
 
-        # Pytanie 2
-        st.markdown("**Pytanie 2 — prawdopodobieństwo straty (miscalibration, optimism bias)**")
+        st.markdown("**Pytanie 2 — prawdopodobieństwo straty**")
         st.markdown("Jakie jest prawdopodobieństwo, że po 30 rundach Twój kapitał będzie niższy niż 100 zł?")
         q2 = st.radio(
             "Wybierz zakres:",
@@ -804,8 +733,7 @@ def show_game2_questions():
         )
         st.markdown("---")
 
-        # Pytanie 3
-        st.markdown("**Pytanie 3 — ryzyko dużej straty / bankructwa (fat-tail neglect, illusion of control)**")
+        st.markdown("**Pytanie 3 — ryzyko dużej straty / bankructwa**")
         st.markdown("Jakie jest prawdopodobieństwo, że w trakcie gry stracisz większość kapitału (co najmniej 80%)?")
         q3 = st.radio(
             "Wybierz zakres:",
@@ -826,7 +754,6 @@ def show_game2_questions():
             if not all([q1, q2, q3]):
                 st.error("⚠️ Proszę odpowiedzieć na wszystkie 3 pytania.")
             else:
-                # Zapis odpowiedzi do stanu sesji
                 st.session_state.results['g2_pre_survey'] = {
                     "return_expect": q1,
                     "loss_prob": q2,
@@ -835,8 +762,6 @@ def show_game2_questions():
                 next_page('game2')
 
 def show_game2():
-    # --- GUARD CLAUSE ---
-    # Jeśli runda > 30, przekieruj do ankiety
     if st.session_state.g2_round > 30:
         next_page('survey')
         return
@@ -844,14 +769,11 @@ def show_game2():
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
     cap = st.session_state.g2_capital
     
-    # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
     col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        # Wyświetlanie głównego kapitału
         st.metric("Twoje środki", f"{cap:.2f} PLN")
         
-        # Sprawdzenie bankructwa
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
@@ -860,10 +782,7 @@ def show_game2():
 
         st.markdown("---")
         
-        # --- ZMIANA: SUWAK ZAMIAST WPISYWANIA KWOTY ---
         st.write("Decyzja o stawce:")
-        
-        # Dwie kolumny: Suwak (szeroki) i Przeliczona kwota (wąski)
         c_slider, c_val = st.columns([3, 2])
         
         with c_slider:
@@ -875,14 +794,11 @@ def show_game2():
                 step=1
             )
         
-      # Obliczenie kwoty na podstawie suwaka (zaokrąglamy do 2 miejsc po przecinku)
         bet_amount = round(cap * (bet_pct / 100.0), 2)
 
         with c_val:
-            # Wyświetlenie kwoty: .2f wymusza zawsze dwa miejsca (np. 10.00, 10.50)
             st.metric("Wartość zakładu", f"{bet_amount:.2f}")
 
-        # Wybór strony monety
         bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"], horizontal=True)
         
         st.markdown("---")
@@ -904,11 +820,9 @@ def show_game2():
                 result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # Aktualizacja stanu
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # Dodanie wpisu do tabeli (wyświetlanej w prawej kolumnie)
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
@@ -917,7 +831,6 @@ def show_game2():
                 "% Kapitału": f"{bet_pct}%"
             })
             
-            # Zapis do logów (CSV/Sheets)
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
                 "bet_amount": bet_amount,
@@ -929,7 +842,6 @@ def show_game2():
             
             st.session_state.g2_round += 1
             
-            # Obsługa końca gry i przeładowania
             if st.session_state.g2_round > 30:
                 time.sleep(1.5)
                 next_page('survey')
@@ -937,72 +849,94 @@ def show_game2():
                 time.sleep(1.0)
                 st.rerun()
         
-        # Wykres pod spodem
         st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
         st.write("### Historia Gier")
         if st.session_state.g2_table_data:
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
-            # POPRAWKA: Zamieniono use_container_width=True na width="stretch" zgodnie z logiem błędu
             st.dataframe(
                 df_hist.style.map(color_outcome, subset=['Rezultat']),
                 height=500,
-                width="stretch", # Zmiana wymuszona błędem wersji Streamlit
+                width="stretch",
                 hide_index=True
             )
 
-# --- ANKIETA (PODZIELONA NA 2 STRONY) ---
+# --- ANKIETA (ZMIENIONA: SKALA LIKERTA) ---
 
 def show_survey():
-    st.header("Część 3: Scenariusze")
+    st.header("Część 3: Opinie")
+    st.markdown("Proszę określić, w jakim stopniu zgadzasz się z poniższymi stwierdzeniami.")
+
+    # Wyświetlanie legendy
+    st.markdown("""
+    <div class="likert-legend">
+        <b>Legenda Skali:</b><br>
+        1 – Zdecydowanie się nie zgadzam<br>
+        2 – Raczej się nie zgadzam<br>
+        3 – Trudno powiedzieć / Neutralnie<br>
+        4 – Raczej się zgadzam<br>
+        5 – Zdecydowanie się zgadzam
+    </div>
+    """, unsafe_allow_html=True)
     
     page_num = st.session_state.survey_page_num
     
+    # Dzielimy 12 pytań na 2 strony po 6
+    QUESTIONS_PER_PAGE = 6
+    start_idx = (page_num - 1) * QUESTIONS_PER_PAGE
+    end_idx = start_idx + QUESTIONS_PER_PAGE
+    
+    current_questions = FIXED_QUESTIONS[start_idx:end_idx]
+    
+    # Progress bar logic
     if page_num == 1:
         st.progress(50)
-        current_questions = FIXED_QUESTIONS[:7]
         btn_label = "Dalej (Strona 2/2)"
     else:
         st.progress(100)
-        current_questions = FIXED_QUESTIONS[7:]
         btn_label = "Zakończ badanie"
 
-    with st.form(f"survey_form_{page_num}"):
+    with st.form(f"survey_form_likert_{page_num}"):
         for q_data in current_questions:
             st.markdown(f"**{q_data['q']}**")
-            val = st.radio("Wybierz opcję:", q_data['opts'], key=q_data['id'], index=None)
+            
+            # Używamy select_slider dla czytelności (1 do 5)
+            # Domyślnie brak wartości (None) nie jest obsługiwany przez slider tak łatwo jak radio,
+            # więc ustawiamy wartość domyślną na 3 (środek) lub zmuszamy użytkownika do przesunięcia?
+            # Dla select_slider: value=3 jest bezpiecznym defaultem "Neutralnie".
+            
+            val = st.select_slider(
+                "Twoja ocena:",
+                options=[1, 2, 3, 4, 5],
+                value=3, 
+                key=q_data['id']
+            )
             st.markdown("---")
         
         submitted = st.form_submit_button(btn_label)
         
         if submitted:
-            missing = False
+            # Zbieramy odpowiedzi z session_state (klucze w select_slider)
             current_answers = {}
             for q in current_questions:
-                ans = st.session_state.get(q['id'])
-                if ans is None:
-                    missing = True
-                else:
-                    current_answers[q['id']] = ans
+                # W sliderze zawsze jest wartość (domyślnie 3), więc nie ma "missing"
+                current_answers[q['id']] = st.session_state[q['id']]
             
-            if missing:
-                st.warning("Proszę odpowiedzieć na wszystkie pytania na tej stronie.")
+            st.session_state.results['survey_answers'].update(current_answers)
+            
+            if page_num == 1:
+                st.session_state.survey_page_num = 2
+                st.rerun()
             else:
-                st.session_state.results['survey_answers'].update(current_answers)
-                
-                if page_num == 1:
-                    st.session_state.survey_page_num = 2
-                    st.rerun()
-                else:
-                    next_page('finish')
+                next_page('finish')
 
 # --- ROUTER ---
 if st.session_state.page == 'intro': show_intro()
 elif st.session_state.page == 'demographics': show_demographics()
 elif st.session_state.page == 'game1_intro': show_game1_intro()
 elif st.session_state.page == 'game1': show_game1()
-elif st.session_state.page == 'game1_summary': show_game1_summary() # NOWY ROUTING
+elif st.session_state.page == 'game1_summary': show_game1_summary()
 elif st.session_state.page == 'game2_intro': show_game2_intro()
 elif st.session_state.page == 'game2_questions': show_game2_questions()
 elif st.session_state.page == 'game2': show_game2()
