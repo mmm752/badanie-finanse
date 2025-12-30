@@ -1,0 +1,22 @@
+[theme]
+# Wymusza tryb ciemny jako bazę
+base = "dark"
+
+# Główny kolor akcentów (np. suwaki, aktywne przyciski) - Twój niebieski
+primaryColor = "#4da6ff"
+
+# Kolor tła aplikacji (bardzo ciemny granat/czarny)
+backgroundColor = "#0e1117"
+
+# Kolor tła dla paska bocznego i kart (nieco jaśniejszy ciemny)
+secondaryBackgroundColor = "#262730"
+
+# Kolor tekstu
+textColor = "#fafafa"
+
+# Czcionka (opcjonalnie, sans serif pasuje do stylu finansowego)
+font = "sans serif"
+
+[server]
+# Opcjonalnie: ukrywa stopkę "Made with Streamlit"
+headless = true

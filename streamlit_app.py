@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import random
@@ -179,7 +180,19 @@ FIXED_QUESTIONS = [
 def next_page(page_name):
     st.session_state.page = page_name
     st.rerun()
-
+def scroll_to_top():
+    # Krótki skrypt JS, który szuka głównego kontenera aplikacji i przewija go do 0
+    js = """
+    <script>
+        var body = window.parent.document.querySelector(".main");
+        var appView = window.parent.document.querySelector(".stApp");
+        if (body) { body.scrollTop = 0; }
+        if (appView) { appView.scrollTop = 0; }
+        window.scrollTo(0, 0);
+    </script>
+    """
+    # height=0 sprawia, że ten komponent jest niewidoczny, ale kod się wykonuje
+    components.html(js, height=0)
 # --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE + HEADERy) ---
 
 def save_data_multi_sheet(data_package):
@@ -877,19 +890,23 @@ LIKERT_OPTIONS = list(LIKERT_MAP.keys())
 
 
 def show_survey():
+    # --- NOWE: Przewiń do góry przy każdym załadowaniu tej funkcji ---
+    scroll_to_top()
+    # -----------------------------------------------------------------
+
     st.header("Część 3: Opinie")
     
-    # --- CSS WYMUSZAJĄCY CZARNĄ CZCIONKĘ ---
+    # --- CSS WYMUSZAJĄCY CZARNĄ CZCIONKĘ (Z Twoimi poprawkami) ---
     st.markdown("""
     <style>
     .survey-question {
-        color: ##ffffff ;
+        color: #ffffff !important; /* Wymuszona czerń dla pytań */
         font-size: 1.1rem;
         font-weight: 600;
         margin-bottom: 10px;
     }
     .likert-legend {
-        background-color:  #ffffff;/* Białe tło */
+        background-color: #ffffff; /* Białe tło */
         color: #000000;            /* Czarny tekst */
         padding: 15px;
         border: 1px solid #cccccc;
@@ -900,13 +917,14 @@ def show_survey():
     /* Poprawka widoczności etykiet suwaka */
     .stSlider [data-baseweb="slider"] div[data-testid="stMarkdownContainer"] p {
         font-weight: bold;
+        color: #000000 !important; /* Wymuszenie czerni na etykietach suwaka */
     }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown("Proszę określić, w jakim stopniu zgadzasz się z poniższymi stwierdzeniami.")
 
-    # Legenda (opcjonalna, skoro jest na suwaku, ale warto zostawić dla jasności)
+    # Legenda
     st.markdown("""
     <div class="likert-legend">
         <b>Skala:</b> Przesuwaj suwak, aby wybrać odpowiednie stwierdzenie.<br>
@@ -942,18 +960,17 @@ def show_survey():
                 options=LIKERT_OPTIONS,
                 value="3 – Trudno powiedzieć / Neutralnie", # Domyślna wartość
                 key=q_data['id'],
-                label_visibility="collapsed" # Ukrywamy nagłówek "Twoja ocena", bo pytanie jest wyżej
+                label_visibility="collapsed"
             )
             st.markdown("---")
         
         submitted = st.form_submit_button(btn_label)
         
         if submitted:
-            # Zbieramy odpowiedzi i konwertujemy tekst na liczbę (1-5)
+            # Zbieramy odpowiedzi
             current_answers = {}
             for q in current_questions:
                 selected_text = st.session_state[q['id']]
-                # Zamiana tekstu "1 – Zdecydowanie..." na liczbę 1
                 numerical_val = LIKERT_MAP[selected_text]
                 current_answers[q['id']] = numerical_val
             
@@ -961,7 +978,7 @@ def show_survey():
             
             if page_num == 1:
                 st.session_state.survey_page_num = 2
-                st.rerun()
+                st.rerun() # To przeładuje stronę, a scroll_to_top() na początku funkcji zadziała
             else:
                 next_page('finish')
 
