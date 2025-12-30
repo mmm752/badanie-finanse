@@ -63,7 +63,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- DANE GIEŁDOWE (WERSJA TRUDNA) ---
-# Dane mamy na 40 okresów, ale wykorzystamy tylko 30 zgodnie z życzeniem
 DATA_A = [
     4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00,
     4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00,
@@ -107,6 +106,7 @@ if 'results' not in st.session_state:
         'demographics': {},
         'game1_history': [],
         'game2_history': [],
+        'g2_pre_survey': {}, # NOWE POLE NA ODPOWIEDZI PRZED GRĄ 2
         'survey_answers': {}
     }
 if 'survey_page_num' not in st.session_state:
@@ -170,7 +170,6 @@ FIXED_QUESTIONS = [
             "B: Idziesz do sądu: masz 30% szans, że nie zapłacisz nic, i 70% szans, że zapłacisz pełne 100 000 PLN."
         ]
     },
-    # --- PRZEJŚCIE NA STRONĘ 2 ---
     {
         "id": "Q08_Anchoring",
         "q": "Pytanie 8: Kupiłeś akcje po 200 PLN, spadły do 150 PLN. Dziś nagle odbiły do 198 PLN.",
@@ -246,9 +245,11 @@ def save_data_multi_sheet(data_package):
     # --- DEFINICJA NAZW KOLUMN (NAGŁÓWKI) ---
     q_headers = [f"Pytanie_{i+1:02d}" for i in range(14)]
     
+    # ZAKTUALIZOWANE NAGŁÓWKI DLA GŁÓWNEGO ARKUSZA (dodano 3 nowe kolumny)
     HEADERS_MAIN = [
         "User_ID", "Data_Badania", 
         "Wiek", "Plec", "Wyksztalcenie", "Branza_Fin", "Dosw_Inv", "Real_Inv", "Ryzyko",
+        "Pre_G2_Zwrot", "Pre_G2_Prawdo_Straty", "Pre_G2_Ryzyko_Bankructwa",  # <-- NOWE KOLUMNY
         "G1_Kapital_Koncowy", "G2_Kapital_Koncowy"
     ] + q_headers
 
@@ -331,6 +332,9 @@ def show_finish():
     uid = st.session_state.user_id
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     demo = st.session_state.results['demographics']
+    
+    # Pobranie odpowiedzi z nowej ankiety przed grą 2
+    pre_g2 = st.session_state.results.get('g2_pre_survey', {})
 
     # --- 1. PRZYGOTOWANIE ARKUSZA GŁÓWNEGO (UCZESTNICY + ANKIETA) ---
     survey_flat = []
@@ -345,6 +349,8 @@ def show_finish():
         demo.get('age'), demo.get('gender'), demo.get('education'), 
         demo.get('finance_related'), demo.get('inv_experience'), 
         demo.get('real_investing'), demo.get('risk_tolerance'),
+        # Dodanie nowych pól do zapisu:
+        pre_g2.get('return_expect'), pre_g2.get('loss_prob'), pre_g2.get('ruin_prob'),
         st.session_state.g1_history_user[-1], # Wynik G1
         st.session_state.g2_capital           # Wynik G2
     ] + survey_flat
@@ -697,7 +703,78 @@ def show_game2_intro():
         st.session_state.g2_table_data = []
 
     if st.button("Start gry z monetą"):
-        next_page('game2')
+        # ZMIANA: PRZEKIEROWANIE DO NOWEJ STRONY Z PYTANIAMI
+        next_page('game2_questions')
+
+# --- NOWA STRONA: PYTANIA PRZED GRĄ 2 ---
+def show_game2_questions():
+    st.header("Twoje przewidywania")
+    st.markdown("Zanim zaczniesz grę, odpowiedz proszę na 3 pytania dotyczące Twoich oczekiwań.")
+
+    with st.form("pre_game2_survey"):
+        
+        # Pytanie 1
+        st.markdown("**Pytanie 1 — oczekiwana stopa zwrotu (overconfidence, neglect of compounding)**")
+        st.markdown("Jakiej łącznej stopy zwrotu spodziewasz się po 30 rundach?")
+        q1 = st.radio(
+            "Wybierz jedną opcję:",
+            [
+                "strata większa niż −50%",
+                "od −50% do −20%",
+                "od −20% do 0%",
+                "od 0% do +20%",
+                "od +20% do +50%",
+                "powyżej +50%"
+            ],
+            index=None
+        )
+        st.markdown("---")
+
+        # Pytanie 2
+        st.markdown("**Pytanie 2 — prawdopodobieństwo straty (miscalibration, optimism bias)**")
+        st.markdown("Jakie jest prawdopodobieństwo, że po 30 rundach Twój kapitał będzie niższy niż 100 zł?")
+        q2 = st.radio(
+            "Wybierz zakres:",
+            [
+                "0–10%",
+                "11–25%",
+                "26–50%",
+                "51–75%",
+                "76–100%"
+            ],
+            index=None
+        )
+        st.markdown("---")
+
+        # Pytanie 3
+        st.markdown("**Pytanie 3 — ryzyko dużej straty / bankructwa (fat-tail neglect, illusion of control)**")
+        st.markdown("Jakie jest prawdopodobieństwo, że w trakcie gry stracisz większość kapitału (co najmniej 80%)?")
+        q3 = st.radio(
+            "Wybierz zakres:",
+            [
+                "0–5%",
+                "6–15%",
+                "16–30%",
+                "31–50%",
+                "powyżej 50%"
+            ],
+            index=None
+        )
+        st.markdown("---")
+
+        submitted = st.form_submit_button("Zapisz odpowiedzi i przejdź do gry")
+
+        if submitted:
+            if not all([q1, q2, q3]):
+                st.error("⚠️ Proszę odpowiedzieć na wszystkie 3 pytania.")
+            else:
+                # Zapis odpowiedzi do stanu sesji
+                st.session_state.results['g2_pre_survey'] = {
+                    "return_expect": q1,
+                    "loss_prob": q2,
+                    "ruin_prob": q3
+                }
+                next_page('game2')
 
 def show_game2():
     # --- GUARD CLAUSE ---
@@ -867,6 +944,7 @@ elif st.session_state.page == 'demographics': show_demographics()
 elif st.session_state.page == 'game1_intro': show_game1_intro()
 elif st.session_state.page == 'game1': show_game1()
 elif st.session_state.page == 'game2_intro': show_game2_intro()
+elif st.session_state.page == 'game2_questions': show_game2_questions() # <-- NOWA STRONA W ROUTERZE
 elif st.session_state.page == 'game2': show_game2()
 elif st.session_state.page == 'survey': show_survey()
 elif st.session_state.page == 'finish': show_finish()
