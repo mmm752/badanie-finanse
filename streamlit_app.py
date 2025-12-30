@@ -63,7 +63,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- DANE GIEŁDOWE (WERSJA TRUDNA) ---
-# Dane mamy na 40 okresów, ale wykorzystamy tylko 30 zgodnie z życzeniem
 DATA_A = [
     4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00,
     4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00,
@@ -469,8 +468,8 @@ def show_intro():
     Twój identyfikator: **{st.session_state.user_id}**.
     
     Badanie zajmie ok. 10 minut i składa się z 3 części:
-    1. Gra Giełdowa (30 rund).
-    2. Rzuty Monetą (zarządzanie stawką - 30 rund).
+    1. Gra Giełdowa (40 rund).
+    2. Rzuty Monetą (zarządzanie stawką).
     3. Krótka Ankieta.
     """)
     if st.button("Rozpocznij badanie"):
@@ -555,10 +554,11 @@ def show_game1_intro():
     st.header("Część 1: Gra Inwestycyjna")
     st.markdown("# 📈 📉 💰")
     
+    # POPRAWIONE FORMATOWANIE HTML (BEZ WCIĘĆ)
     st.markdown("""
 <div class="instruction-card">
     <h3>Instrukcja:</h3>
-    Wcielasz się w rolę inwestora. Masz przed sobą <b>30 rund</b> (reprezentujących 30 miesięcy).
+    Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
     <ul>
         <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
         <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
@@ -568,7 +568,7 @@ def show_game1_intro():
             <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
         </ul>
         <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
-        <li>Od 15. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
+        <li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
     </ul>
 </div>
     """, unsafe_allow_html=True)
@@ -587,10 +587,9 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    # ZMIANA: Skrócenie gry do 30 rund
-    total_len = 30
+    total_len = 40
     
-    if current_idx >= 29: # Koniec po 30 rundach (indeksy 0-29)
+    if current_idx >= 39:
         next_page('game2_intro')
         return
 
@@ -598,7 +597,7 @@ def show_game1():
     prev_cap = st.session_state.g1_history_user[-2] if len(st.session_state.g1_history_user) > 1 else 10000.0
     pct_change_show = ((current_cap - prev_cap) / prev_cap) * 100
     
-    st.subheader(f"Runda {current_idx + 1} / {total_len} ({LABELS_TEXT[current_idx]})")
+    st.subheader(f"Runda {current_idx + 1} / 40 ({LABELS_TEXT[current_idx]})")
     
     col_m1, col_m2 = st.columns(2)
     col_m1.metric("Twój Kapitał", f"{current_cap:.2f} PLN", f"{pct_change_show:.2f}%")
@@ -608,13 +607,11 @@ def show_game1():
         "Nasdaq": pad_history(st.session_state.g1_history_B, total_len),
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
-    
-    # Wykres wyświetlamy z odpowiednią osią X (do 30 okresów)
-    st.line_chart(chart_data.iloc[:total_len], color=["#AAAAAA", "#4444FF", "#FF0000"])
+    chart_data.index = REAL_DATES
+    st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"])
     
     leverage_active = False
-    # ZMIANA: Lewar dostępny od 15 rundy (połowa)
-    if current_idx >= 15:
+    if current_idx >= 20:
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
 
@@ -668,12 +665,13 @@ def show_game1():
 def show_game2_intro():
     st.header("Część 2: Zakład o rzut monetą")
     
+    # POPRAWIONE FORMATOWANIE HTML (BEZ WCIĘĆ)
     st.markdown("""
 <div class="instruction-card">
     <h3>Zasady:</h3>
     <ul>
         <li>💰 <b>Start:</b> Otrzymujesz na start <b>100 PLN</b>.</li>
-        <li>🎲 <b>Długość:</b> Czeka Cię <b>30 rzutów</b> wirtualną monetą.</li>
+        <li>🎲 <b>Długość:</b> Czeka Cię <b>40 rzutów</b> wirtualną monetą.</li>
         <li>📊 <b>Prawdopodobieństwa (stałe):</b>
             <ul>
                 <li>🦅 <b>ORZEŁ:</b> 60% szans (Wygrana)</li>
@@ -683,7 +681,7 @@ def show_game2_intro():
         <li>⚙️ <b>Twoja decyzja w każdej rundzie:</b>
             <ul>
                 <li>Na co stawiasz (Orzeł czy Reszka).</li>
-                <li>Jaki % kapitału stawiasz (suwakiem).</li>
+                <li>Ile pieniędzy stawiasz.</li>
             </ul>
         </li>
     </ul>
@@ -700,58 +698,31 @@ def show_game2_intro():
         next_page('game2')
 
 def show_game2():
-    # --- GUARD CLAUSE ---
-    # Jeśli runda > 30, przekieruj do ankiety
-    if st.session_state.g2_round > 30:
+    # --- POPRAWKA: GUARD CLAUSE ---
+    # Sprawdzamy na samym początku, czy gra się skończyła.
+    # Jeśli runda > 40, natychmiast przekieruj do ankiety, nie rysuj interfejsu gry.
+    if st.session_state.g2_round > 40:
         next_page('survey')
         return
+    # ------------------------------
 
-    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
+    st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 40")
     cap = st.session_state.g2_capital
     
-    # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
     col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        # Wyświetlanie głównego kapitału
         st.metric("Twoje środki", f"{cap:.2f} PLN")
         
-        # Sprawdzenie bankructwa
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
                 next_page('survey')
             return
 
-        st.markdown("---")
+        bet_amount = st.number_input("Ile PLN stawiasz?", min_value=0.0, max_value=float(cap), value=min(10.0, cap), step=1.0)
+        bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"])
         
-        # --- ZMIANA: SUWAK ZAMIAST WPISYWANIA KWOTY ---
-        st.write("Decyzja o stawce:")
-        
-        # Dwie kolumny: Suwak (szeroki) i Przeliczona kwota (wąski)
-        c_slider, c_val = st.columns([3, 2])
-        
-        with c_slider:
-            bet_pct = st.slider(
-                "Jaki % kapitału stawiasz?", 
-                min_value=0, 
-                max_value=100, 
-                value=10, 
-                step=1
-            )
-        
-        # Obliczenie kwoty na podstawie suwaka
-        bet_amount = cap * (bet_pct / 100.0)
-
-        with c_val:
-            # Wyświetlenie kwoty w ładnym formacie
-            st.metric("Wartość zakładu", f"{bet_amount:.2f} PLN")
-
-        # Wybór strony monety
-        bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"], horizontal=True)
-        
-        st.markdown("---")
-
         if st.button("RZUĆ MONETĄ", type="primary"):
             is_heads = random.random() < 0.6
             coin_result = "ORZEŁ" if is_heads else "RESZKA"
@@ -769,20 +740,19 @@ def show_game2():
                 result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # Aktualizacja stanu
+            bet_pct = (bet_amount / cap) * 100 if cap > 0 else 0
+
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # Dodanie wpisu do tabeli (wyświetlanej w prawej kolumnie)
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
                 "Rezultat": result_label,
                 "Stawka": f"{bet_amount:.2f} PLN",
-                "% Kapitału": f"{bet_pct}%"
+                "% Kapitału": f"{bet_pct:.1f}%"
             })
             
-            # Zapis do logów (CSV/Sheets)
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
                 "bet_amount": bet_amount,
@@ -794,15 +764,15 @@ def show_game2():
             
             st.session_state.g2_round += 1
             
-            # Obsługa końca gry i przeładowania
-            if st.session_state.g2_round > 30:
+            # Tutaj logika pozostaje, ale dzięki 'return' na górze funkcji
+            # przy następnym odświeżeniu (st.rerun) gra już się nie wyświetli.
+            if st.session_state.g2_round > 40:
                 time.sleep(1.5)
                 next_page('survey')
             else:
                 time.sleep(1.0)
                 st.rerun()
         
-        # Wykres pod spodem
         st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
