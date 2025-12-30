@@ -106,7 +106,7 @@ if 'results' not in st.session_state:
         'demographics': {},
         'game1_history': [],
         'game2_history': [],
-        'g2_pre_survey': {}, # NOWE POLE NA ODPOWIEDZI PRZED GRĄ 2
+        'g2_pre_survey': {}, 
         'survey_answers': {}
     }
 if 'survey_page_num' not in st.session_state:
@@ -240,16 +240,16 @@ def save_data_multi_sheet(data_package):
     """
     Zapisuje dane do trzech oddzielnych arkuszy/plików.
     Dodaje czytelne nagłówki kolumn.
+    Zabezpieczona przed brakiem pliku secrets.toml.
     """
     
     # --- DEFINICJA NAZW KOLUMN (NAGŁÓWKI) ---
     q_headers = [f"Pytanie_{i+1:02d}" for i in range(14)]
     
-    # ZAKTUALIZOWANE NAGŁÓWKI DLA GŁÓWNEGO ARKUSZA (dodano 3 nowe kolumny)
     HEADERS_MAIN = [
         "User_ID", "Data_Badania", 
         "Wiek", "Plec", "Wyksztalcenie", "Branza_Fin", "Dosw_Inv", "Real_Inv", "Ryzyko",
-        "Pre_G2_Zwrot", "Pre_G2_Prawdo_Straty", "Pre_G2_Ryzyko_Bankructwa",  # <-- NOWE KOLUMNY
+        "Pre_G2_Zwrot", "Pre_G2_Prawdo_Straty", "Pre_G2_Ryzyko_Bankructwa",
         "G1_Kapital_Koncowy", "G2_Kapital_Koncowy"
     ] + q_headers
 
@@ -281,35 +281,46 @@ def save_data_multi_sheet(data_package):
         "g2": "G2_Moneta_Szczegoly"
     }
 
-    # ZAPIS DO GOOGLE SHEETS
-    if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
+    # --- ZAPIS DO GOOGLE SHEETS (ZABEZPIECZONY) ---
+    try:
+        # Sprawdzamy czy biblioteka jest i czy secrets są dostępne w bezpieczny sposób
+        can_use_gsheets = False
         try:
-            credentials = Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"],
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive"
-                ],
-            )
-            gc = gspread.authorize(credentials)
-            sh = gc.open("Wyniki_Badania")
-            
-            for key, rows in data_package.items():
-                if not rows: continue
-                try:
-                    ws = sh.worksheet(SHEET_NAMES[key])
-                    # Jeśli arkusz pusty, dodaj nagłówek
-                    if not ws.get_all_values():
-                        ws.append_row(HEADERS_MAP[key])
-                    ws.append_rows(rows)
-                except Exception as inner_e:
-                    st.warning(f"Nie znaleziono arkusza {SHEET_NAMES[key]}, pomijam. ({inner_e})")
-            return True
-        except Exception as e:
-            st.error(f"Błąd GSheets API: {e}")
-            pass # Fallback do lokalnego
+             if HAS_GSPREAD and 'gcp_service_account' in st.secrets:
+                 can_use_gsheets = True
+        except Exception:
+             # Jeśli st.secrets rzuci błąd (brak pliku), ignorujemy to
+             pass
 
-    # ZAPIS LOKALNY DO CSV (z nagłówkami)
+        if can_use_gsheets:
+            try:
+                credentials = Credentials.from_service_account_info(
+                    st.secrets["gcp_service_account"],
+                    scopes=[
+                        "https://www.googleapis.com/auth/spreadsheets",
+                        "https://www.googleapis.com/auth/drive"
+                    ],
+                )
+                gc = gspread.authorize(credentials)
+                sh = gc.open("Wyniki_Badania")
+                
+                for key, rows in data_package.items():
+                    if not rows: continue
+                    try:
+                        ws = sh.worksheet(SHEET_NAMES[key])
+                        if not ws.get_all_values():
+                            ws.append_row(HEADERS_MAP[key])
+                        ws.append_rows(rows)
+                    except Exception as inner_e:
+                        st.warning(f"Nie znaleziono arkusza {SHEET_NAMES[key]}, pomijam. ({inner_e})")
+                return True # Sukces Google Sheets
+            except Exception as e:
+                st.error(f"Błąd GSheets API: {e}")
+                pass # Błąd API - lecimy dalej do zapisu lokalnego
+    except Exception:
+        pass
+
+    # --- ZAPIS LOKALNY DO CSV (FALLBACK) ---
     try:
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         for key, rows in data_package.items():
@@ -318,7 +329,7 @@ def save_data_multi_sheet(data_package):
             df = pd.DataFrame(rows, columns=HEADERS_MAP[key])
             filename = f"wyniki_{key}_{timestamp_str}.csv"
             
-            # Zawsze zapisujemy z nagłówkiem (nowy plik dla każdego usera)
+            # Zawsze zapisujemy z nagłówkiem
             df.to_csv(filename, index=False, header=True, encoding='utf-8-sig')
             
         return True
@@ -534,7 +545,8 @@ def show_demographics():
         
         # Pytanie 7: Ryzyko
         st.write("7. Jak oceniasz swoją skłonność do podejmowania ryzyka finansowego? (1-bardzo niska, 7-bardzo wysoka)")
-        risk = st.slider("", 1, 7, 4)
+        # POPRAWKA: Dodano label i ukryto go (label_visibility="collapsed")
+        risk = st.slider("Poziom ryzyka", 1, 7, 4, label_visibility="collapsed")
         
         submitted = st.form_submit_button("Dalej")
         
@@ -886,10 +898,11 @@ def show_game2():
         st.write("### Historia Gier")
         if st.session_state.g2_table_data:
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
+            # POPRAWKA: Zamieniono use_container_width=True na width="stretch" zgodnie z logiem błędu
             st.dataframe(
                 df_hist.style.map(color_outcome, subset=['Rezultat']),
                 height=500,
-                use_container_width=True,
+                width="stretch", # Zmiana wymuszona błędem wersji Streamlit
                 hide_index=True
             )
 
@@ -944,7 +957,7 @@ elif st.session_state.page == 'demographics': show_demographics()
 elif st.session_state.page == 'game1_intro': show_game1_intro()
 elif st.session_state.page == 'game1': show_game1()
 elif st.session_state.page == 'game2_intro': show_game2_intro()
-elif st.session_state.page == 'game2_questions': show_game2_questions() # <-- NOWA STRONA W ROUTERZE
+elif st.session_state.page == 'game2_questions': show_game2_questions()
 elif st.session_state.page == 'game2': show_game2()
 elif st.session_state.page == 'survey': show_survey()
 elif st.session_state.page == 'finish': show_finish()
