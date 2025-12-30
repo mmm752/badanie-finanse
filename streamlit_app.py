@@ -180,19 +180,25 @@ FIXED_QUESTIONS = [
 def next_page(page_name):
     st.session_state.page = page_name
     st.rerun()
+
 def scroll_to_top():
-    # Krótki skrypt JS, który szuka głównego kontenera aplikacji i przewija go do 0
+    # POPRAWKA: Dodanie losowego klucza (key) oraz setTimeout wymusza 
+    # ponowne wykonanie skryptu przy każdym odświeżeniu strony.
     js = """
     <script>
-        var body = window.parent.document.querySelector(".main");
-        var appView = window.parent.document.querySelector(".stApp");
-        if (body) { body.scrollTop = 0; }
-        if (appView) { appView.scrollTop = 0; }
-        window.scrollTo(0, 0);
+        setTimeout(function() {
+            var body = window.parent.document.querySelector(".main");
+            var appView = window.parent.document.querySelector(".stApp");
+            if (body) { body.scrollTop = 0; }
+            if (appView) { appView.scrollTop = 0; }
+            window.scrollTo(0, 0);
+        }, 50);
     </script>
     """
-    # height=0 sprawia, że ten komponent jest niewidoczny, ale kod się wykonuje
-    components.html(js, height=0)
+    # Key=uuid sprawia, że komponent jest unikalny przy każdym wywołaniu,
+    # co zapobiega cache'owaniu przez Streamlit i wymusza wykonanie JS.
+    components.html(js, height=0, key=str(uuid.uuid4()))
+
 # --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE + HEADERy) ---
 
 def save_data_multi_sheet(data_package):
@@ -896,7 +902,7 @@ def show_survey():
 
     st.header("Część 3: Opinie")
     
-    # --- CSS WYMUSZAJĄCY CZARNĄ CZCIONKĘ (Z Twoimi poprawkami) ---
+    # --- CSS WYMUSZAJĄCY CZARNĄ CZCIONKĘ ---
     st.markdown("""
     <style>
     .survey-question {
