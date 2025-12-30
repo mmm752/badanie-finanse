@@ -864,19 +864,53 @@ def show_game2():
 
 # --- ANKIETA (ZMIENIONA: SKALA LIKERTA) ---
 
+# --- SŁOWNIK DO MAPOWANIA ODPOWIEDZI NA LICZBY ---
+LIKERT_MAP = {
+    "1 – Zdecydowanie się nie zgadzam": 1,
+    "2 – Raczej się nie zgadzam": 2,
+    "3 – Trudno powiedzieć / Neutralnie": 3,
+    "4 – Raczej się zgadzam": 4,
+    "5 – Zdecydowanie się zgadzam": 5
+}
+# Lista opcji do wyświetlenia na suwaku
+LIKERT_OPTIONS = list(LIKERT_MAP.keys())
+
+
 def show_survey():
     st.header("Część 3: Opinie")
+    
+    # --- CSS WYMUSZAJĄCY CZARNĄ CZCIONKĘ ---
+    st.markdown("""
+    <style>
+    .survey-question {
+        color: #000000 !important; /* Wymuszenie czerni */
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+    .likert-legend {
+        background-color: #ffffff; /* Białe tło */
+        color: #000000;            /* Czarny tekst */
+        padding: 15px;
+        border: 1px solid #cccccc;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        font-size: 0.9rem;
+    }
+    /* Poprawka widoczności etykiet suwaka */
+    .stSlider [data-baseweb="slider"] div[data-testid="stMarkdownContainer"] p {
+        font-weight: bold;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("Proszę określić, w jakim stopniu zgadzasz się z poniższymi stwierdzeniami.")
 
-    # Wyświetlanie legendy
+    # Legenda (opcjonalna, skoro jest na suwaku, ale warto zostawić dla jasności)
     st.markdown("""
     <div class="likert-legend">
-        <b>Legenda Skali:</b><br>
-        1 – Zdecydowanie się nie zgadzam<br>
-        2 – Raczej się nie zgadzam<br>
-        3 – Trudno powiedzieć / Neutralnie<br>
-        4 – Raczej się zgadzam<br>
-        5 – Zdecydowanie się zgadzam
+        <b>Skala:</b> Przesuwaj suwak, aby wybrać odpowiednie stwierdzenie.<br>
+        Od <b>1 (Nie zgadzam się)</b> do <b>5 (Zgadzam się)</b>.
     </div>
     """, unsafe_allow_html=True)
     
@@ -889,7 +923,7 @@ def show_survey():
     
     current_questions = FIXED_QUESTIONS[start_idx:end_idx]
     
-    # Progress bar logic
+    # Pasek postępu
     if page_num == 1:
         st.progress(50)
         btn_label = "Dalej (Strona 2/2)"
@@ -899,29 +933,29 @@ def show_survey():
 
     with st.form(f"survey_form_likert_{page_num}"):
         for q_data in current_questions:
-            st.markdown(f"**{q_data['q']}**")
+            # Użycie HTML class="survey-question" dla czarnego koloru
+            st.markdown(f'<div class="survey-question">{q_data["q"]}</div>', unsafe_allow_html=True)
             
-            # Używamy select_slider dla czytelności (1 do 5)
-            # Domyślnie brak wartości (None) nie jest obsługiwany przez slider tak łatwo jak radio,
-            # więc ustawiamy wartość domyślną na 3 (środek) lub zmuszamy użytkownika do przesunięcia?
-            # Dla select_slider: value=3 jest bezpiecznym defaultem "Neutralnie".
-            
-            val = st.select_slider(
+            # SUWAK Z ETYKIETAMI SŁOWNYMI
+            val_str = st.select_slider(
                 "Twoja ocena:",
-                options=[1, 2, 3, 4, 5],
-                value=3, 
-                key=q_data['id']
+                options=LIKERT_OPTIONS,
+                value="3 – Trudno powiedzieć / Neutralnie", # Domyślna wartość
+                key=q_data['id'],
+                label_visibility="collapsed" # Ukrywamy nagłówek "Twoja ocena", bo pytanie jest wyżej
             )
             st.markdown("---")
         
         submitted = st.form_submit_button(btn_label)
         
         if submitted:
-            # Zbieramy odpowiedzi z session_state (klucze w select_slider)
+            # Zbieramy odpowiedzi i konwertujemy tekst na liczbę (1-5)
             current_answers = {}
             for q in current_questions:
-                # W sliderze zawsze jest wartość (domyślnie 3), więc nie ma "missing"
-                current_answers[q['id']] = st.session_state[q['id']]
+                selected_text = st.session_state[q['id']]
+                # Zamiana tekstu "1 – Zdecydowanie..." na liczbę 1
+                numerical_val = LIKERT_MAP[selected_text]
+                current_answers[q['id']] = numerical_val
             
             st.session_state.results['survey_answers'].update(current_answers)
             

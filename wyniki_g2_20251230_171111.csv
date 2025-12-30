@@ -1,0 +1,7 @@
+﻿User_ID,Runda,Kapital_Przed,Wybor_Strony,Stawka,Bet_Ratio_%,Odchylenie_Kelly,Martingale_Flag,Zmiana_Strony,Wynik_Rzutu,Czy_Wygrana,Kapital_Po_Rundzie
+4a90502e,1,100.0,HEADS,10.0,0.1,-0.1,0,0,HEADS,1,110.0
+4a90502e,2,110.0,HEADS,44.0,0.4,0.2,0,0,TAILS,0,66.0
+4a90502e,3,66.0,HEADS,51.48,0.78,0.58,0,0,HEADS,1,117.48
+4a90502e,4,117.48,HEADS,117.48,1.0,0.8,0,0,HEADS,1,234.96
+4a90502e,5,234.96,HEADS,234.96,1.0,0.8,0,0,HEADS,1,469.92
+4a90502e,6,469.92,HEADS,469.92,1.0,0.8,0,0,TAILS,0,-0.0
