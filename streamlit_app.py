@@ -576,7 +576,7 @@ def show_game1_intro():
     st.markdown("""
 <div class="instruction-card">
     <h3>Instrukcja:</h3>
-    Wcielasz się w rolę inwestora. Masz przed sobą <b>30 rund</b> (reprezentujących 30 miesięcy).
+    Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
     <ul>
         <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
         <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
@@ -586,7 +586,7 @@ def show_game1_intro():
             <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
         </ul>
         <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
-        <li>Od 15. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
+        <li>Od 20. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
     </ul>
 </div>
     """, unsafe_allow_html=True)
@@ -605,10 +605,11 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    # ZMIANA: Skrócenie gry do 30 rund
-    total_len = 30
+    # ZMIANA: Wydłużenie gry do 40 rund
+    total_len = 40
     
-    if current_idx >= 29: # Koniec po 30 rundach (indeksy 0-29)
+    # ZMIANA: Koniec gry następuje, gdy osiągniemy ostatni indeks (39)
+    if current_idx >= 39: 
         next_page('game2_intro')
         return
 
@@ -627,12 +628,12 @@ def show_game1():
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
     
-    # Wykres wyświetlamy z odpowiednią osią X (do 30 okresów)
+    # Wykres wyświetlamy dla całej długości (40)
     st.line_chart(chart_data.iloc[:total_len], color=["#AAAAAA", "#4444FF", "#FF0000"])
     
     leverage_active = False
-    # ZMIANA: Lewar dostępny od 15 rundy (połowa)
-    if current_idx >= 15:
+    # ZMIANA: Lewar dostępny od 20 rundy (połowa z 40)
+    if current_idx >= 20:
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
 
@@ -646,6 +647,7 @@ def show_game1():
     if choice:
         next_idx = current_idx + 1
         
+        # Pobieramy dane dla kolejnego miesiąca
         price_A_prev = DATA_A[current_idx]
         price_A_curr = DATA_A[next_idx]
         ret_A = (price_A_curr - price_A_prev) / price_A_prev
@@ -680,7 +682,6 @@ def show_game1():
             "capital": new_cap
         })
         st.rerun()
-
 # --- GRA 2: MONETA ---
 
 def show_game2_intro():
@@ -829,11 +830,11 @@ def show_game2():
                 step=1
             )
         
-        # Obliczenie kwoty na podstawie suwaka
-        bet_amount = cap * (bet_pct / 100.0)
+      # Obliczenie kwoty na podstawie suwaka (zaokrąglamy do 2 miejsc po przecinku)
+        bet_amount = round(cap * (bet_pct / 100.0), 2)
 
         with c_val:
-            # Wyświetlenie kwoty w ładnym formacie
+            # Wyświetlenie kwoty: .2f wymusza zawsze dwa miejsca (np. 10.00, 10.50)
             st.metric("Wartość zakładu", f"{bet_amount:.2f} PLN")
 
         # Wybór strony monety
