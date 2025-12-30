@@ -883,13 +883,13 @@ def show_survey():
     st.markdown("""
     <style>
     .survey-question {
-        color: #000000 !important; /* Wymuszenie czerni */
+        color: ##ffffff ;
         font-size: 1.1rem;
         font-weight: 600;
         margin-bottom: 10px;
     }
     .likert-legend {
-        background-color: #ffffff; /* Białe tło */
+        background-color:  #ffffff;/* Białe tło */
         color: #000000;            /* Czarny tekst */
         padding: 15px;
         border: 1px solid #cccccc;
