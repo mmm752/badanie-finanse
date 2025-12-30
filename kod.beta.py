@@ -662,59 +662,67 @@ def show_game1():
 
 # --- GRA 2: MONETA ---
 
+def show_game2_intro():
+    st.header("Część 2: Zakład o rzut monetą")
+    
+    # POPRAWIONE FORMATOWANIE HTML (BEZ WCIĘĆ)
+    st.markdown("""
+<div class="instruction-card">
+    <h3>Zasady:</h3>
+    <ul>
+        <li>💰 <b>Start:</b> Otrzymujesz na start <b>100 PLN</b>.</li>
+        <li>🎲 <b>Długość:</b> Czeka Cię <b>40 rzutów</b> wirtualną monetą.</li>
+        <li>📊 <b>Prawdopodobieństwa (stałe):</b>
+            <ul>
+                <li>🦅 <b>ORZEŁ:</b> 60% szans (Wygrana)</li>
+                <li>📉 <b>RESZKA:</b> 40% szans (Wygrana)</li>
+            </ul>
+        </li>
+        <li>⚙️ <b>Twoja decyzja w każdej rundzie:</b>
+            <ul>
+                <li>Na co stawiasz (Orzeł czy Reszka).</li>
+                <li>Ile pieniędzy stawiasz.</li>
+            </ul>
+        </li>
+    </ul>
+</div>
+    """, unsafe_allow_html=True)
+    
+    if 'g2_round' not in st.session_state:
+        st.session_state.g2_round = 1
+        st.session_state.g2_capital = 100.0
+        st.session_state.g2_history_chart = [100.0]
+        st.session_state.g2_table_data = []
+
+    if st.button("Start gry z monetą"):
+        next_page('game2')
+
 def show_game2():
-    # --- GUARD CLAUSE ---
-    # Jeśli runda > 40, przekieruj do ankiety
+    # --- POPRAWKA: GUARD CLAUSE ---
+    # Sprawdzamy na samym początku, czy gra się skończyła.
+    # Jeśli runda > 40, natychmiast przekieruj do ankiety, nie rysuj interfejsu gry.
     if st.session_state.g2_round > 40:
         next_page('survey')
         return
+    # ------------------------------
 
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 40")
     cap = st.session_state.g2_capital
     
-    # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
     col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        # Wyświetlanie głównego kapitału
         st.metric("Twoje środki", f"{cap:.2f} PLN")
         
-        # Sprawdzenie bankructwa
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
                 next_page('survey')
             return
 
-        st.markdown("---")
+        bet_amount = st.number_input("Ile PLN stawiasz?", min_value=0.0, max_value=float(cap), value=min(10.0, cap), step=1.0)
+        bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"])
         
-        # --- ZMIANA: SUWAK ZAMIAST WPISYWANIA KWOTY ---
-        st.write("Decyzja o stawce:")
-        
-        # Dwie kolumny: Suwak (szeroki) i Przeliczona kwota (wąski)
-        c_slider, c_val = st.columns([3, 2])
-        
-        with c_slider:
-            bet_pct = st.slider(
-                "Jaki % kapitału stawiasz?", 
-                min_value=0, 
-                max_value=100, 
-                value=10, 
-                step=1
-            )
-        
-        # Obliczenie kwoty na podstawie suwaka
-        bet_amount = cap * (bet_pct / 100.0)
-
-        with c_val:
-            # Wyświetlenie kwoty w ładnym formacie
-            st.metric("Wartość zakładu", f"{bet_amount:.2f} PLN")
-
-        # Wybór strony monety
-        bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"], horizontal=True)
-        
-        st.markdown("---")
-
         if st.button("RZUĆ MONETĄ", type="primary"):
             is_heads = random.random() < 0.6
             coin_result = "ORZEŁ" if is_heads else "RESZKA"
@@ -732,20 +740,19 @@ def show_game2():
                 result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # Aktualizacja stanu
+            bet_pct = (bet_amount / cap) * 100 if cap > 0 else 0
+
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # Dodanie wpisu do tabeli (wyświetlanej w prawej kolumnie)
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
                 "Rezultat": result_label,
                 "Stawka": f"{bet_amount:.2f} PLN",
-                "% Kapitału": f"{bet_pct}%"
+                "% Kapitału": f"{bet_pct:.1f}%"
             })
             
-            # Zapis do logów (CSV/Sheets)
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
                 "bet_amount": bet_amount,
@@ -757,7 +764,8 @@ def show_game2():
             
             st.session_state.g2_round += 1
             
-            # Obsługa końca gry i przeładowania
+            # Tutaj logika pozostaje, ale dzięki 'return' na górze funkcji
+            # przy następnym odświeżeniu (st.rerun) gra już się nie wyświetli.
             if st.session_state.g2_round > 40:
                 time.sleep(1.5)
                 next_page('survey')
@@ -765,7 +773,6 @@ def show_game2():
                 time.sleep(1.0)
                 st.rerun()
         
-        # Wykres pod spodem
         st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
@@ -778,6 +785,51 @@ def show_game2():
                 use_container_width=True,
                 hide_index=True
             )
+
+# --- ANKIETA (PODZIELONA NA 2 STRONY) ---
+
+def show_survey():
+    st.header("Część 3: Scenariusze")
+    
+    page_num = st.session_state.survey_page_num
+    
+    if page_num == 1:
+        st.progress(50)
+        current_questions = FIXED_QUESTIONS[:7]
+        btn_label = "Dalej (Strona 2/2)"
+    else:
+        st.progress(100)
+        current_questions = FIXED_QUESTIONS[7:]
+        btn_label = "Zakończ badanie"
+
+    with st.form(f"survey_form_{page_num}"):
+        for q_data in current_questions:
+            st.markdown(f"**{q_data['q']}**")
+            val = st.radio("Wybierz opcję:", q_data['opts'], key=q_data['id'], index=None)
+            st.markdown("---")
+        
+        submitted = st.form_submit_button(btn_label)
+        
+        if submitted:
+            missing = False
+            current_answers = {}
+            for q in current_questions:
+                ans = st.session_state.get(q['id'])
+                if ans is None:
+                    missing = True
+                else:
+                    current_answers[q['id']] = ans
+            
+            if missing:
+                st.warning("Proszę odpowiedzieć na wszystkie pytania na tej stronie.")
+            else:
+                st.session_state.results['survey_answers'].update(current_answers)
+                
+                if page_num == 1:
+                    st.session_state.survey_page_num = 2
+                    st.rerun()
+                else:
+                    next_page('finish')
 
 # --- ROUTER ---
 if st.session_state.page == 'intro': show_intro()
