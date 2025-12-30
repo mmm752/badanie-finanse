@@ -835,7 +835,7 @@ def show_game2():
 
         with c_val:
             # Wyświetlenie kwoty: .2f wymusza zawsze dwa miejsca (np. 10.00, 10.50)
-            st.metric("Wartość zakładu", f"{bet_amount:.2f} PLN")
+            st.metric("Wartość zakładu", f"{bet_amount:.2f}")
 
         # Wybór strony monety
         bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"], horizontal=True)
