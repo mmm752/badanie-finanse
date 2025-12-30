@@ -62,8 +62,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- DANE GIEŁDOWE (WERSJA TRUDNA) ---
-# Dane mamy na 40 okresów, ale wykorzystamy tylko 30 zgodnie z życzeniem
+# --- DANE GIEŁDOWE (40 okresów) ---
 DATA_A = [
     4000.00, 4020.00, 4100.00, 4080.00, 4150.00, 4200.00, 4220.00, 4300.00, 4350.00, 4400.00,
     4380.00, 4350.00, 4320.00, 4400.00, 4450.00, 4500.00, 4550.00, 4600.00, 4580.00, 4650.00,
@@ -105,6 +104,7 @@ if 'page' not in st.session_state:
 if 'results' not in st.session_state:
     st.session_state.results = {
         'demographics': {},
+        'pre_game2_survey': {},  # Nowe pole na ankietę pośrednią
         'game1_history': [],
         'game2_history': [],
         'survey_answers': {}
@@ -112,7 +112,7 @@ if 'results' not in st.session_state:
 if 'survey_page_num' not in st.session_state:
     st.session_state.survey_page_num = 1
 
-# --- PYTANIA ANKIETOWE (STAŁA KOLEJNOŚĆ) ---
+# --- PYTANIA ANKIETOWE (SCENARIUSZE) ---
 FIXED_QUESTIONS = [
     {
         "id": "Q01_Overconfidence",
@@ -229,26 +229,39 @@ FIXED_QUESTIONS = [
     }
 ]
 
-# --- FUNKCJE ---
+# --- FUNKCJE POMOCNICZE ---
 
 def next_page(page_name):
     st.session_state.page = page_name
     st.rerun()
 
-# --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE + HEADERy) ---
+def pad_history(history_list, total_length):
+    base = history_list[:total_length]
+    padding = [None] * (total_length - len(base))
+    return base + padding
+
+def color_outcome(val):
+    if isinstance(val, str):
+        if "WYGRANA" in val:
+            return 'color: #2e7d32; font-weight: bold'
+        elif "PRZEGRANA" in val:
+            return 'color: #c62828; font-weight: bold'
+    return ''
+
+# --- ZAPIS DANYCH ---
 
 def save_data_multi_sheet(data_package):
     """
     Zapisuje dane do trzech oddzielnych arkuszy/plików.
-    Dodaje czytelne nagłówki kolumn.
     """
     
-    # --- DEFINICJA NAZW KOLUMN (NAGŁÓWKI) ---
     q_headers = [f"Pytanie_{i+1:02d}" for i in range(14)]
     
+    # Dodajemy nagłówki dla nowej ankiety (Pre-Game 2)
     HEADERS_MAIN = [
         "User_ID", "Data_Badania", 
         "Wiek", "Plec", "Wyksztalcenie", "Branza_Fin", "Dosw_Inv", "Real_Inv", "Ryzyko",
+        "PreG2_Exp_Return", "PreG2_Loss_Prob", "PreG2_Ruin_Prob", # NOWE KOLUMNY
         "G1_Kapital_Koncowy", "G2_Kapital_Koncowy"
     ] + q_headers
 
@@ -266,14 +279,12 @@ def save_data_multi_sheet(data_package):
         "Wynik_Rzutu", "Czy_Wygrana", "Kapital_Po_Rundzie"
     ]
 
-    # Mapowanie kluczy
     HEADERS_MAP = {
         "main": HEADERS_MAIN,
         "g1": HEADERS_G1,
         "g2": HEADERS_G2
     }
 
-    # Nazwy arkuszy w GSheets
     SHEET_NAMES = {
         "main": "Uczestnicy_Ankieta",
         "g1": "G1_Gielda_Szczegoly",
@@ -297,7 +308,6 @@ def save_data_multi_sheet(data_package):
                 if not rows: continue
                 try:
                     ws = sh.worksheet(SHEET_NAMES[key])
-                    # Jeśli arkusz pusty, dodaj nagłówek
                     if not ws.get_all_values():
                         ws.append_row(HEADERS_MAP[key])
                     ws.append_rows(rows)
@@ -306,9 +316,9 @@ def save_data_multi_sheet(data_package):
             return True
         except Exception as e:
             st.error(f"Błąd GSheets API: {e}")
-            pass # Fallback do lokalnego
+            pass
 
-    # ZAPIS LOKALNY DO CSV (z nagłówkami)
+    # ZAPIS LOKALNY DO CSV
     try:
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         for key, rows in data_package.items():
@@ -316,8 +326,6 @@ def save_data_multi_sheet(data_package):
             
             df = pd.DataFrame(rows, columns=HEADERS_MAP[key])
             filename = f"wyniki_{key}_{timestamp_str}.csv"
-            
-            # Zawsze zapisujemy z nagłówkiem (nowy plik dla każdego usera)
             df.to_csv(filename, index=False, header=True, encoding='utf-8-sig')
             
         return True
@@ -331,8 +339,9 @@ def show_finish():
     uid = st.session_state.user_id
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     demo = st.session_state.results['demographics']
+    pre_g2 = st.session_state.results.get('pre_game2_survey', {})
 
-    # --- 1. PRZYGOTOWANIE ARKUSZA GŁÓWNEGO (UCZESTNICY + ANKIETA) ---
+    # --- 1. PRZYGOTOWANIE ARKUSZA GŁÓWNEGO ---
     survey_flat = []
     sorted_q_ids = sorted(st.session_state.results['survey_answers'].keys())
     for q_id in sorted_q_ids:
@@ -345,6 +354,12 @@ def show_finish():
         demo.get('age'), demo.get('gender'), demo.get('education'), 
         demo.get('finance_related'), demo.get('inv_experience'), 
         demo.get('real_investing'), demo.get('risk_tolerance'),
+        
+        # Nowe pola z ankiety pośredniej
+        pre_g2.get('expected_return'),
+        pre_g2.get('loss_prob'),
+        pre_g2.get('ruin_prob'),
+        
         st.session_state.g1_history_user[-1], # Wynik G1
         st.session_state.g2_capital           # Wynik G2
     ] + survey_flat
@@ -447,19 +462,6 @@ def show_finish():
         else:
             st.error("Problem z zapisem danych.")
 
-def pad_history(history_list, total_length):
-    base = history_list[:total_length]
-    padding = [None] * (total_length - len(base))
-    return base + padding
-
-def color_outcome(val):
-    if isinstance(val, str):
-        if "WYGRANA" in val:
-            return 'color: #2e7d32; font-weight: bold'
-        elif "PRZEGRANA" in val:
-            return 'color: #c62828; font-weight: bold'
-    return ''
-
 # --- STRONY ---
 
 def show_intro():
@@ -468,97 +470,76 @@ def show_intro():
     Dzień dobry!
     Twój identyfikator: **{st.session_state.user_id}**.
     
-    Badanie zajmie ok. 10 minut i składa się z 3 części:
-    1. Gra Giełdowa (30 rund).
-    2. Rzuty Monetą (zarządzanie stawką - 30 rund).
-    3. Krótka Ankieta.
+    Badanie zajmie ok. 10 minut i składa się z:
+    1. Gry Giełdowej (40 rund).
+    2. Krótkiego oszacowania oczekiwań.
+    3. Gry z rzutem monetą (30 rund).
+    4. Krótkiej ankiety końcowej.
     """)
     if st.button("Rozpocznij badanie"):
         next_page('demographics')
 
 def show_demographics():
     st.header("Metryczka")
-    st.markdown("Proszę uzupełnić podstawowe informacje. **Wszystkie pola są wymagane.**")
+    st.markdown("Proszę uzupełnić podstawowe informacje.")
     
     with st.form("demo"):
-        # Pytanie 1: Wiek
         age = st.selectbox(
             "1. Ile masz lat?",
             ["poniżej 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65 lub więcej"],
-            index=None,
-            placeholder="Wybierz..."
+            index=None, placeholder="Wybierz..."
         )
-        
-        # Pytanie 2: Płeć
         gender = st.radio(
             "2. Jakiej jesteś płci?",
             ["Kobieta", "Mężczyzna", "Inna / nie chcę podawać"],
             index=None
         )
-        
-        # Pytanie 3: Wykształcenie
         edu = st.selectbox(
             "3. Najwyższy ukończony poziom wykształcenia:",
             ["Podstawowe", "Średnie", "Licencjat / inżynier", "Magister", "Doktorat lub wyżej"],
-            index=None,
-            placeholder="Wybierz..."
+            index=None, placeholder="Wybierz..."
         )
-        
-        # Pytanie 4: Dziedzina
         field = st.radio(
             "4. Czy Twoje wykształcenie lub praca są związane z finansami, ekonomią lub rynkami kapitałowymi?",
             ["Tak", "Częściowo", "Nie"],
             index=None
         )
-        
-        # Pytanie 5: Doświadczenie inwestycyjne
         inv_exp = st.selectbox(
             "5. Jak oceniasz swoje doświadczenie w inwestowaniu?",
             ["Brak doświadczenia", "Początkujące", "Średnie", "Zaawansowane", "Profesjonalne"],
-            index=None,
-            placeholder="Wybierz..."
+            index=None, placeholder="Wybierz..."
         )
-        
-        # Pytanie 6: Doświadczenie realne
         real_inv = st.radio(
             "6. Czy kiedykolwiek inwestowałeś/-aś realne pieniądze (np. akcje, ETF-y, kryptowaluty)?",
             ["Tak", "Nie"],
             index=None
         )
-        
-        # Pytanie 7: Ryzyko
         st.write("7. Jak oceniasz swoją skłonność do podejmowania ryzyka finansowego? (1-bardzo niska, 7-bardzo wysoka)")
         risk = st.slider("", 1, 7, 4)
         
         submitted = st.form_submit_button("Dalej")
         
         if submitted:
-            # WALIDACJA: Czy wszystko (poza suwakiem) jest wypełnione?
             required_fields = [age, gender, edu, field, inv_exp, real_inv]
             if any(f is None for f in required_fields):
                 st.error("⚠️ Proszę odpowiedzieć na wszystkie pytania przed przejściem dalej.")
             else:
                 st.session_state.results['demographics'] = {
-                    "age": age,
-                    "gender": gender,
-                    "education": edu,
-                    "finance_related": field,
-                    "inv_experience": inv_exp,
-                    "real_investing": real_inv,
-                    "risk_tolerance": risk
+                    "age": age, "gender": gender, "education": edu,
+                    "finance_related": field, "inv_experience": inv_exp,
+                    "real_investing": real_inv, "risk_tolerance": risk
                 }
                 next_page('game1_intro')
 
-# --- GRA 1: GIEŁDA ---
+# --- GRA 1: GIEŁDA (40 RUND) ---
 
 def show_game1_intro():
     st.header("Część 1: Gra Inwestycyjna")
     st.markdown("# 📈 📉 💰")
-    
     st.markdown("""
 <div class="instruction-card">
     <h3>Instrukcja:</h3>
-    Wcielasz się w rolę inwestora. Masz przed sobą <b>30 rund</b> (reprezentujących 30 miesięcy).
+    Wcielasz się w rolę inwestora. Masz przed sobą <b>40 rund</b> (reprezentujących 40 miesięcy).
     <ul>
         <li>Na start otrzymujesz <b>10 000 PLN</b> wirtualnego kapitału.</li>
         <li>W każdej rundzie decydujesz, gdzie ulokować pieniądze:</li>
@@ -568,7 +549,7 @@ def show_game1_intro():
             <li><b>Gotówka:</b> Bezpieczna przystań (0% zysku).</li>
         </ul>
         <li class="important-text">Twoim celem jest maksymalizacja zysku.</li>
-        <li>Od 15. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
+        <li>Od 21. rundy dostępny będzie <b>Lewar (x2)</b>.</li>
     </ul>
 </div>
     """, unsafe_allow_html=True)
@@ -587,11 +568,12 @@ def show_game1_intro():
 
 def show_game1():
     current_idx = st.session_state.g1_round
-    # ZMIANA: Skrócenie gry do 30 rund
-    total_len = 30
+    # POWRÓT DO 40 RUND
+    total_len = 40
     
-    if current_idx >= 29: # Koniec po 30 rundach (indeksy 0-29)
-        next_page('game2_intro')
+    # Przekierowanie PO zakończeniu 40 rund do ANKIETY POŚREDNIEJ
+    if current_idx >= 39: 
+        next_page('pre_game2_survey')
         return
 
     current_cap = st.session_state.g1_history_user[-1]
@@ -609,12 +591,11 @@ def show_game1():
         "Twój Kapitał (🔴)": pad_history(st.session_state.g1_history_user, total_len)
     })
     
-    # Wykres wyświetlamy z odpowiednią osią X (do 30 okresów)
-    st.line_chart(chart_data.iloc[:total_len], color=["#AAAAAA", "#4444FF", "#FF0000"])
+    st.line_chart(chart_data, color=["#AAAAAA", "#4444FF", "#FF0000"])
     
     leverage_active = False
-    # ZMIANA: Lewar dostępny od 15 rundy (połowa)
-    if current_idx >= 15:
+    # Lewar od połowy (runda 21)
+    if current_idx >= 20:
         st.warning("⚡ ODBLOKOWANO DŹWIGNIĘ (LEWAR x2)")
         leverage_active = st.checkbox("Użyj dźwigni (x2 zyski/straty)")
 
@@ -663,7 +644,67 @@ def show_game1():
         })
         st.rerun()
 
-# --- GRA 2: MONETA ---
+# --- NOWA STRONA: ANKIETA PRZED GRĄ 2 ---
+
+def show_pre_game2_survey():
+    st.header("Krótka ankieta przed kolejną częścią")
+    st.markdown("Zanim przejdziesz do gry z monetą, prosimy o odpowiedź na 3 pytania dotyczące Twoich oczekiwań.")
+    
+    with st.form("pre_g2_form"):
+        st.subheader("1. Oczekiwania")
+        q1 = st.radio(
+            "Jakiej łącznej stopy zwrotu spodziewasz się po 30 rundach?",
+            [
+                "strata większa niż −50%",
+                "od −50% do −20%",
+                "od −20% do 0%",
+                "od 0% do +20%",
+                "od +20% do +50%",
+                "powyżej +50%"
+            ],
+            index=None
+        )
+        
+        st.subheader("2. Prawdopodobieństwo straty")
+        q2 = st.radio(
+            "Jakie jest prawdopodobieństwo, że po 30 rundach Twój kapitał będzie niższy niż 100 zł (kapitał początkowy)?",
+            [
+                "0–10%",
+                "11–25%",
+                "26–50%",
+                "51–75%",
+                "76–100%"
+            ],
+            index=None
+        )
+        
+        st.subheader("3. Ryzyko bankructwa")
+        q3 = st.radio(
+            "Jakie jest prawdopodobieństwo, że w trakcie gry stracisz większość kapitału (co najmniej 80%)?",
+            [
+                "0–5%",
+                "6–15%",
+                "16–30%",
+                "31–50%",
+                "powyżej 50%"
+            ],
+            index=None
+        )
+        
+        submitted = st.form_submit_button("Dalej do Gry z Monetą")
+        
+        if submitted:
+            if q1 is None or q2 is None or q3 is None:
+                st.error("Proszę udzielić odpowiedzi na wszystkie pytania.")
+            else:
+                st.session_state.results['pre_game2_survey'] = {
+                    "expected_return": q1,
+                    "loss_prob": q2,
+                    "ruin_prob": q3
+                }
+                next_page('game2_intro')
+
+# --- GRA 2: MONETA (30 RUND) ---
 
 def show_game2_intro():
     st.header("Część 2: Zakład o rzut monetą")
@@ -701,7 +742,7 @@ def show_game2_intro():
 
 def show_game2():
     # --- GUARD CLAUSE ---
-    # Jeśli runda > 30, przekieruj do ankiety
+    # Koniec po 30 rundach
     if st.session_state.g2_round > 30:
         next_page('survey')
         return
@@ -709,14 +750,11 @@ def show_game2():
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
     cap = st.session_state.g2_capital
     
-    # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
     col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        # Wyświetlanie głównego kapitału
         st.metric("Twoje środki", f"{cap:.2f} PLN")
         
-        # Sprawdzenie bankructwa
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
@@ -725,10 +763,7 @@ def show_game2():
 
         st.markdown("---")
         
-        # --- ZMIANA: SUWAK ZAMIAST WPISYWANIA KWOTY ---
         st.write("Decyzja o stawce:")
-        
-        # Dwie kolumny: Suwak (szeroki) i Przeliczona kwota (wąski)
         c_slider, c_val = st.columns([3, 2])
         
         with c_slider:
@@ -740,14 +775,11 @@ def show_game2():
                 step=1
             )
         
-        # Obliczenie kwoty na podstawie suwaka
         bet_amount = cap * (bet_pct / 100.0)
 
         with c_val:
-            # Wyświetlenie kwoty w ładnym formacie
             st.metric("Wartość zakładu", f"{bet_amount:.2f} PLN")
 
-        # Wybór strony monety
         bet_side = st.radio("Obstawiam:", ["ORZEŁ", "RESZKA"], horizontal=True)
         
         st.markdown("---")
@@ -755,7 +787,6 @@ def show_game2():
         if st.button("RZUĆ MONETĄ", type="primary"):
             is_heads = random.random() < 0.6
             coin_result = "ORZEŁ" if is_heads else "RESZKA"
-            
             user_chose_heads = "ORZEŁ" in bet_side
             
             if (user_chose_heads and is_heads) or (not user_chose_heads and not is_heads):
@@ -769,11 +800,9 @@ def show_game2():
                 result_label = f"PRZEGRANA ({coin_result})"
                 st.error(f"Wypadł {coin_result}. Tracisz {bet_amount:.2f} PLN.")
 
-            # Aktualizacja stanu
             st.session_state.g2_capital += pnl
             st.session_state.g2_history_chart.append(st.session_state.g2_capital)
             
-            # Dodanie wpisu do tabeli (wyświetlanej w prawej kolumnie)
             st.session_state.g2_table_data.insert(0, {
                 "Runda": st.session_state.g2_round,
                 "Twój Wybór": "ORZEŁ" if user_chose_heads else "RESZKA",
@@ -782,7 +811,6 @@ def show_game2():
                 "% Kapitału": f"{bet_pct}%"
             })
             
-            # Zapis do logów (CSV/Sheets)
             st.session_state.results['game2_history'].append({
                 "round": st.session_state.g2_round,
                 "bet_amount": bet_amount,
@@ -794,7 +822,6 @@ def show_game2():
             
             st.session_state.g2_round += 1
             
-            # Obsługa końca gry i przeładowania
             if st.session_state.g2_round > 30:
                 time.sleep(1.5)
                 next_page('survey')
@@ -802,7 +829,6 @@ def show_game2():
                 time.sleep(1.0)
                 st.rerun()
         
-        # Wykres pod spodem
         st.line_chart(st.session_state.g2_history_chart)
 
     with col_hist:
@@ -811,12 +837,10 @@ def show_game2():
             df_hist = pd.DataFrame(st.session_state.g2_table_data)
             st.dataframe(
                 df_hist.style.map(color_outcome, subset=['Rezultat']),
-                height=500,
-                use_container_width=True,
-                hide_index=True
+                height=500, use_container_width=True, hide_index=True
             )
 
-# --- ANKIETA (PODZIELONA NA 2 STRONY) ---
+# --- ANKIETA KOŃCOWA ---
 
 def show_survey():
     st.header("Część 3: Scenariusze")
@@ -866,6 +890,7 @@ if st.session_state.page == 'intro': show_intro()
 elif st.session_state.page == 'demographics': show_demographics()
 elif st.session_state.page == 'game1_intro': show_game1_intro()
 elif st.session_state.page == 'game1': show_game1()
+elif st.session_state.page == 'pre_game2_survey': show_pre_game2_survey() # NOWY ROUTING
 elif st.session_state.page == 'game2_intro': show_game2_intro()
 elif st.session_state.page == 'game2': show_game2()
 elif st.session_state.page == 'survey': show_survey()
