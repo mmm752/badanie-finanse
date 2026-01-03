@@ -804,7 +804,16 @@ def show_game2():
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
             if st.button("Przejdź do ankiety"):
-                next_page('survey')
+                next_page('game2_summary')
+                # ... (fragment wewnątrz show_game2) ...
+            
+            if st.session_state.g2_round > 30:
+                time.sleep(1.5)
+                # ZMIANA TUTAJ:
+                next_page('game2_summary') 
+            else:
+                time.sleep(1.0)
+                st.rerun()
             return
 
         st.markdown("---")
@@ -888,7 +897,30 @@ def show_game2():
                 width="stretch",
                 hide_index=True
             )
-
+def show_game2_summary():
+    st.header("Podsumowanie: Rzut Monetą")
+    
+    # Obliczenia
+    start_cap = 100.0
+    end_cap = st.session_state.g2_capital
+    profit_pln = end_cap - start_cap
+    roi_percent = (profit_pln / start_cap) * 100
+    
+    # Wyświetlanie metryk
+    col1, col2 = st.columns(2)
+    col1.metric("Kapitał Końcowy", f"{end_cap:.2f} PLN", f"{roi_percent:.2f}%")
+    col2.metric("Wynik finansowy", f"{profit_pln:.2f} PLN")
+    
+    st.markdown("---")
+    st.subheader("Historia Twojego kapitału")
+    
+    # Wykres liniowy z całej gry
+    st.line_chart(st.session_state.g2_history_chart)
+    
+    st.markdown("To już koniec części praktycznej. Pozostała tylko krótka ankieta.")
+    
+    if st.button("Przejdź do Ankiety"):
+        next_page('survey')
 # --- ANKIETA (ZMIENIONA: SKALA LIKERTA) ---
 
 # --- SŁOWNIK DO MAPOWANIA ODPOWIEDZI NA LICZBY ---
@@ -1005,5 +1037,8 @@ elif st.session_state.page == 'game1_summary': show_game1_summary()
 elif st.session_state.page == 'game2_intro': show_game2_intro()
 elif st.session_state.page == 'game2_questions': show_game2_questions()
 elif st.session_state.page == 'game2': show_game2()
+# DODAJ TĘ LINIĘ:
+elif st.session_state.page == 'game2_summary': show_game2_summary() 
+# ----------------
 elif st.session_state.page == 'survey': show_survey()
 elif st.session_state.page == 'finish': show_finish()
