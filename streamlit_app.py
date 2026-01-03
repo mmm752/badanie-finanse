@@ -184,11 +184,16 @@ def next_page(page_name):
 def scroll_to_top():
     """
     Funkcja wymuszająca przewinięcie strony na samą górę.
-    Używa unikalnego klucza (key) opartego na czasie, aby Streamlit zawsze wykonywał ten JS.
+    Wstawiamy timestamp bezpośrednio do stringa JS, aby Streamlit 
+    traktował to jako nowy kod HTML przy każdym rerunicie.
     """
+    # Unikalny znacznik czasu
+    unique_id = time.time()
+    
     js = f"""
     <script>
-        // Opóźnienie 100ms, aby DOM zdążył się przeładować
+        // Unikalny ID wymuszający odświeżenie: {unique_id}
+        
         setTimeout(function() {{
             var main = window.parent.document.querySelector('section.main');
             if (main) {{
@@ -198,9 +203,9 @@ def scroll_to_top():
         }}, 100); 
     </script>
     """
-    # Używamy st.components.v1.html z parametrem height=0 (niewidoczny)
-    # Dodajemy klucz key oparty na czasie, aby wymusić ponowne wykonanie przy każdym rerunicie
-    components.html(js, height=0, key=f"scroll_to_top_{time.time()}")
+    
+    # Usunięto parametr 'key', który powodował błąd
+    components.html(js, height=0)
 
 # --- ZAAWANSOWANE ZBIERANIE DANYCH (WIELOWYMIAROWE + HEADERy) ---
 
