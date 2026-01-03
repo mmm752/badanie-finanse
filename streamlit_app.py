@@ -259,11 +259,12 @@ def save_data_multi_sheet(data_package):
         "Zwrot_Gracza", "Zysk_Strata_PLN", "Czy_Zysk", "Kapital_Po_Rundzie"
     ]
 
+    # ZMODYFIKOWANE HEADERY G2 (DODANO KOLUMNY FINANSOWE NA WZÓR G1)
     HEADERS_G2 = [
         "User_ID", "Runda", "Kapital_Przed",
         "Wybor_Strony", "Stawka", "Bet_Ratio_%", "Odchylenie_Kelly", 
         "Martingale_Flag", "Zmiana_Strony",
-        "Wynik_Rzutu", "Czy_Wygrana", "Kapital_Po_Rundzie"
+        "Wynik_Rzutu", "Zwrot_Rundy_%", "Zysk_Strata_PLN", "Czy_Wygrana", "Kapital_Po_Rundzie"
     ]
 
     # Mapowanie kluczy
@@ -390,7 +391,7 @@ def show_finish():
         prev_cap = cap_curr
         prev_choice = choice
 
-    # --- 3. PRZYGOTOWANIE ARKUSZA G2 (MONETA) ---
+    # --- 3. PRZYGOTOWANIE ARKUSZA G2 (MONETA - TERAZ Z PEŁNYM FINANSOWYM PODSUMOWANIEM) ---
     g2_rows = []
     g2_hist = st.session_state.results['game2_history']
     cap_runner = 100.0
@@ -405,7 +406,7 @@ def show_finish():
         res_type = rec['result']
         cap_after = rec['capital_after']
         
-        # Features
+        # Features Behawioralne
         ratio = (bet / cap_runner) if cap_runner > 0 else 0.0
         kelly_diff = ratio - 0.20
         
@@ -417,11 +418,15 @@ def show_finish():
         side_switch = 1 if (prev_side is not None and choice != prev_side) else 0
         win_bin = 1 if res_type == 'WIN' else 0
 
+        # Features Finansowe (na wzór Game 1)
+        pnl_round = cap_after - cap_runner
+        ret_round = (pnl_round / cap_runner) if cap_runner > 0 else 0.0
+
         row = [
             uid, rec['round'], round(cap_runner, 2),
             choice, bet, round(ratio, 4), round(kelly_diff, 4),
             is_martingale, side_switch,
-            outcome, win_bin, round(cap_after, 2)
+            outcome, round(ret_round, 4), round(pnl_round, 2), win_bin, round(cap_after, 2)
         ]
         g2_rows.append(row)
         
@@ -709,12 +714,16 @@ def show_game2():
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
     cap = st.session_state.g2_capital
     
+    # Obliczenie zmiany procentowej dla zachowania spójności wizualnej z Game 1
+    prev_cap = st.session_state.g2_history_chart[-2] if len(st.session_state.g2_history_chart) > 1 else 100.0
+    pct_change_show = ((cap - prev_cap) / prev_cap * 100) if prev_cap > 0 else 0.0
+
     # Główny układ: Lewa strona (Sterowanie), Prawa strona (Tabela historii)
     col_main, col_hist = st.columns([1, 1])
     
     with col_main:
-        # Wyświetlanie głównego kapitału
-        st.metric("Twoje środki", f"{cap:.2f} PLN")
+        # Wyświetlanie głównego kapitału z deltą (NA WZÓR GAME 1)
+        st.metric("Twoje środki", f"{cap:.2f} PLN", f"{pct_change_show:.2f}%")
         
         # Sprawdzenie bankructwa
         if cap <= 0.01:
