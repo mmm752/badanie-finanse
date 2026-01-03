@@ -789,8 +789,10 @@ def show_game2_questions():
                 next_page('game2')
 
 def show_game2():
+    # 1. ZABEZPIECZENIE NA POCZĄTKU
+    # Jeśli użytkownik odświeży stronę po zakończeniu gry, od razu idź do podsumowania
     if st.session_state.g2_round > 30:
-        next_page('survey')
+        next_page('game2_summary')
         return
 
     st.subheader(f"Rzut Monetą: Runda {st.session_state.g2_round} / 30")
@@ -801,19 +803,12 @@ def show_game2():
     with col_main:
         st.metric("Twoje środki", f"{cap:.2f} PLN")
         
+        # 2. OBSŁUGA BANKRUCTWA
         if cap <= 0.01:
             st.error("Bankructwo! Nie masz środków na dalszą grę.")
-            if st.button("Przejdź do ankiety"):
+            # Przycisk ręczny na wypadek, gdyby ktoś chciał przeczytać komunikat
+            if st.button("Przejdź do podsumowania"):
                 next_page('game2_summary')
-                # ... (fragment wewnątrz show_game2) ...
-            
-            if st.session_state.g2_round > 30:
-                time.sleep(1.5)
-                # ZMIANA TUTAJ:
-                next_page('game2_summary') 
-            else:
-                time.sleep(1.0)
-                st.rerun()
             return
 
         st.markdown("---")
@@ -878,11 +873,14 @@ def show_game2():
             
             st.session_state.g2_round += 1
             
+            # 3. SPRAWDZENIE KONCA GRY I AUTOMATYCZNE PRZEKIEROWANIE
             if st.session_state.g2_round > 30:
-                time.sleep(1.5)
-                next_page('survey')
+                # Krótkie opóźnienie (0.5s), żeby użytkownik zobaczył wynik ostatniego rzutu (zielony/czerwony box)
+                time.sleep(0.5) 
+                next_page('game2_summary')
             else:
-                time.sleep(1.0)
+                # Szybkie przeładowanie do kolejnej rundy
+                time.sleep(0.5)
                 st.rerun()
         
         st.line_chart(st.session_state.g2_history_chart)
